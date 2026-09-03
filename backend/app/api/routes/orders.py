@@ -13,9 +13,10 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.customer import Customer
 from app.models.order import Order, OrderItem
+from app.models.order_status_log import OrderStatusLog
 from app.models.service import Service
 from app.models.user import User
-from app.schemas.order import OrderCreate, OrderItemOut, OrderListOut, OrderOut, OrderUpdate
+from app.schemas.order import OrderCreate, OrderItemOut, OrderListOut, OrderOut, OrderStatusLogOut, OrderUpdate
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -149,6 +150,36 @@ async def list_orders(
     ]
 
 
+@router.get("/{order_id}/history", response_model=list[OrderStatusLogOut])
+async def get_order_history(
+    order_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[OrderStatusLogOut]:
+    order = await _load_order(db, order_id)
+    await ensure_branch_accessible(order.branch_id, current_user, db)
+    result = await db.execute(
+        select(OrderStatusLog)
+        .options(selectinload(OrderStatusLog.changed_by))
+        .where(OrderStatusLog.order_id == order_id)
+        .order_by(OrderStatusLog.changed_at.asc())
+    )
+    return [
+        OrderStatusLogOut(
+            id=log.id,
+            order_id=log.order_id,
+            branch_id=log.branch_id,
+            from_status=log.from_status,
+            to_status=log.to_status,
+            changed_by_user_id=log.changed_by_user_id,
+            changed_by_name=log.changed_by.full_name if log.changed_by else None,
+            changed_at=log.changed_at,
+            note=log.note,
+        )
+        for log in result.scalars().all()
+    ]
+
+
 @router.get("/{order_id}", response_model=OrderOut)
 async def get_order(order_id: uuid.UUID, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> OrderOut:
     order = await _load_order(db, order_id)
@@ -192,10 +223,11 @@ async def create_order(payload: OrderCreate, current_user: User = Depends(get_cu
     if payload.paid_amount > total:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Paid amount cannot exceed total")
 
+    received_at = payload.received_at or datetime.now(timezone.utc)
     order = Order(
         branch_id=payload.branch_id, customer_id=customer.id,
         invoice_number=await _next_invoice(db, payload.branch_id),
-        received_at=payload.received_at or datetime.now(timezone.utc),
+        received_at=received_at,
         due_at=payload.due_at, status="received", subtotal=subtotal,
         discount=payload.discount, total=total, paid_amount=payload.paid_amount,
         payment_status=_payment_status(total, payload.paid_amount),
@@ -203,6 +235,15 @@ async def create_order(payload: OrderCreate, current_user: User = Depends(get_cu
         items=item_models,
     )
     db.add(order)
+    db.add(OrderStatusLog(
+        order_id=order.id,
+        branch_id=order.branch_id,
+        from_status=None,
+        to_status="received",
+        changed_by_user_id=current_user.id,
+        changed_at=received_at,
+        note="Nota dibuat",
+    ))
     await db.commit()
     order = await _load_order(db, order.id)
     return _order_out(order)
@@ -218,6 +259,8 @@ async def update_order(order_id: uuid.UUID, payload: OrderUpdate, current_user: 
         if any(field in data for field in {"due_at", "discount", "paid_amount", "payment_method", "notes"}):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Closed order cannot be edited")
 
+    status_changed = False
+    old_status = order.status
     if "status" in data:
         new_status = data["status"]
         if new_status not in ALLOWED_STATUSES:
@@ -227,6 +270,7 @@ async def update_order(order_id: uuid.UUID, payload: OrderUpdate, current_user: 
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid status transition: {order.status} -> {new_status}",
             )
+        status_changed = new_status != order.status
 
     if "due_at" in data and data["due_at"] is not None and data["due_at"] < order.received_at:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Due date cannot be before received date")
@@ -253,6 +297,17 @@ async def update_order(order_id: uuid.UUID, payload: OrderUpdate, current_user: 
     order.paid_amount = paid_amount
     order.payment_method = effective_payment_method
     order.payment_status = _payment_status(total, paid_amount)
+
+    if status_changed:
+        db.add(OrderStatusLog(
+            order_id=order.id,
+            branch_id=order.branch_id,
+            from_status=old_status,
+            to_status=order.status,
+            changed_by_user_id=current_user.id,
+            changed_at=datetime.now(timezone.utc),
+            note=None,
+        ))
 
     await db.commit()
     return _order_out(await _load_order(db, order.id))
