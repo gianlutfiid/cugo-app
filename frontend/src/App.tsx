@@ -10,6 +10,7 @@ import Users from "./pages/Users";
 import Branches from "./pages/Branches";
 import Customers from "./pages/Customers";
 import Services from "./pages/Services";
+import Orders from "./pages/Orders";
 
 function App() {
   return (
@@ -17,46 +18,12 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/users"
-            element={
-              <SuperAdminRoute>
-                <Users />
-              </SuperAdminRoute>
-            }
-          />
-          <Route
-            path="/branches"
-            element={
-              <SuperAdminRoute>
-                <Branches />
-              </SuperAdminRoute>
-            }
-          />
-          <Route
-            path="/customers"
-            element={
-              <ProtectedRoute>
-                <Customers />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/services"
-            element={
-              <ProtectedRoute>
-                <Services />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/users" element={<SuperAdminRoute><Users /></SuperAdminRoute>} />
+          <Route path="/branches" element={<SuperAdminRoute><Branches /></SuperAdminRoute>} />
+          <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+          <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
