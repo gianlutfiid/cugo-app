@@ -3,8 +3,10 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
 import { AuthProvider } from "./auth/AuthContext";
 import ProtectedRoute from "./auth/ProtectedRoute";
+import SuperAdminRoute from "./auth/SuperAdminRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import Users from "./pages/Users";
 
 function App() {
   return (
@@ -18,6 +20,14 @@ function App() {
               <ProtectedRoute>
                 <Dashboard />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <SuperAdminRoute>
+                <Users />
+              </SuperAdminRoute>
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />

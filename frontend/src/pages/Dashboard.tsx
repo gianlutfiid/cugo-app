@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { getHealth, HealthResponse } from "../api/client";
 import ChangePasswordCard from "../components/ChangePasswordCard";
@@ -13,6 +14,7 @@ const roleLabel = (user: ReturnType<typeof useAuth>["user"]): string => {
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [health, setHealth] = useState<HealthResponse | null>(null);
 
   useEffect(() => {
@@ -28,6 +30,15 @@ const Dashboard: React.FC = () => {
           <span className="brand-sub">App</span>
         </div>
         <div className="topbar-right">
+          {user?.is_superadmin && (
+            <button
+              className="btn-ghost"
+              onClick={() => navigate("/users")}
+              data-testid="nav-users"
+            >
+              Users
+            </button>
+          )}
           <span className="user-chip" data-testid="user-email">
             {user?.email}
           </span>

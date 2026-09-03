@@ -98,3 +98,90 @@ export const apiChangePassword = async (
   });
   return data;
 };
+
+// ---- Branches ----
+export interface Branch {
+  id: string;
+  name: string;
+  code: string;
+  is_active: boolean;
+  address: string | null;
+  phone: string | null;
+  timezone: string;
+}
+
+export const listBranches = async (): Promise<Branch[]> => {
+  const { data } = await apiClient.get<Branch[]>("/branches");
+  return data;
+};
+
+// ---- Admin user management ----
+export type BranchRole = "branch_admin" | "staff";
+
+export interface AdminMembership {
+  branch_id: string;
+  branch_code: string;
+  branch_name: string;
+  role: BranchRole;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  full_name: string | null;
+  is_superadmin: boolean;
+  is_active: boolean;
+  last_login: string | null;
+  created_at: string;
+  memberships: AdminMembership[];
+}
+
+export interface MembershipInput {
+  branch_id: string;
+  role: BranchRole;
+}
+
+export const adminListUsers = async (): Promise<AdminUser[]> => {
+  const { data } = await apiClient.get<AdminUser[]>("/users");
+  return data;
+};
+
+export const adminCreateUser = async (payload: {
+  email: string;
+  full_name: string | null;
+  memberships: MembershipInput[];
+}): Promise<{ user: AdminUser; initial_password: string }> => {
+  const { data } = await apiClient.post("/users", payload);
+  return data;
+};
+
+export const adminUpdateUser = async (
+  id: string,
+  payload: { full_name?: string; is_active?: boolean }
+): Promise<AdminUser> => {
+  const { data } = await apiClient.patch<AdminUser>(`/users/${id}`, payload);
+  return data;
+};
+
+export const adminUpsertMembership = async (
+  id: string,
+  payload: MembershipInput
+): Promise<AdminUser> => {
+  const { data } = await apiClient.post<AdminUser>(`/users/${id}/memberships`, payload);
+  return data;
+};
+
+export const adminRemoveMembership = async (
+  id: string,
+  branchId: string
+): Promise<AdminUser> => {
+  const { data } = await apiClient.delete<AdminUser>(`/users/${id}/memberships/${branchId}`);
+  return data;
+};
+
+export const adminResetPassword = async (
+  id: string
+): Promise<{ initial_password: string }> => {
+  const { data } = await apiClient.post(`/users/${id}/reset-password`);
+  return data;
+};

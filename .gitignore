@@ -28,3 +28,8 @@ frontend/.eslintcache
 Thumbs.db
 .idea/
 .vscode/
+*.env
+credentials.json
+*.pem
+*.key
+.credentials

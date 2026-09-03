@@ -1,4 +1,6 @@
 """Password hashing (bcrypt) and JWT token helpers."""
+import secrets
+import string
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -11,6 +13,15 @@ settings = get_settings()
 
 ACCESS = "access"
 REFRESH = "refresh"
+
+
+def generate_password(length: int = 14) -> str:
+    """Generate a strong random password that satisfies the password policy."""
+    alphabet = string.ascii_letters + string.digits
+    while True:
+        candidate = "".join(secrets.choice(alphabet) for _ in range(length))
+        if password_policy_error(candidate) is None:
+            return candidate
 
 
 def hash_password(password: str) -> str:
