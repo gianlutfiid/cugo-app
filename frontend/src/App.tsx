@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
 import Branches from "./pages/Branches";
+import Customers from "./pages/Customers";
 
 function App() {
   return (
@@ -37,6 +38,14 @@ function App() {
               <SuperAdminRoute>
                 <Branches />
               </SuperAdminRoute>
+            }
+          />
+          <Route
+            path="/customers"
+            element={
+              <ProtectedRoute>
+                <Customers />
+              </ProtectedRoute>
             }
           />
           <Route path="*" element={<Navigate to="/" replace />} />
