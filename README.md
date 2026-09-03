@@ -123,8 +123,30 @@ alembic upgrade head
 alembic downgrade -1
 ```
 
+## Data model (foundation)
+
+Multi-branch access model — the schema is designed so branch-level data
+isolation can be enforced at the API layer later.
+
+| Table                | Purpose                                                                 |
+| -------------------- | ----------------------------------------------------------------------- |
+| `branches`           | A CUGO branch. Fields: `name`, `code` (unique), `is_active`, `address`, `phone`, `timezone` (default `Asia/Jakarta`), timestamps. |
+| `users`              | Auth-ready account. Fields: `email` (unique), `hashed_password`, `full_name`, `is_superadmin`, `is_active`, `last_login`, timestamps. Passwords are never stored in plaintext. |
+| `branch_memberships` | Many-to-many link (user ↔ branch) carrying a `role` per branch. Unique on `(user_id, branch_id)`. `role` ∈ {`branch_admin`, `staff`} (DB CHECK constraint). FKs cascade on delete. |
+
+**Roles**
+
+- `super_admin` — platform-wide access; represented by `users.is_superadmin`.
+  Requires **no** branch membership.
+- `branch_admin` / `staff` — scoped to the branches in `branch_memberships`.
+
+Roles are stored as strings with a CHECK constraint (not a native ENUM) so new
+roles/permissions can be added later with clean, reversible migrations. See
+`backend/app/models/enums.py`.
+
 ## Notes
 
-- JWT email/password authentication will be added in a later stage.
-- The database schema is intentionally minimal at this point; the full CUGO
-  business schema will be designed before implementing business features.
+- JWT email/password authentication will be added in a later stage; the `users`
+  table is already auth-ready.
+- No business/laundry tables or seed data exist yet — they will be designed
+  before implementing business features.

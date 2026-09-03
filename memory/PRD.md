@@ -45,11 +45,27 @@ PostgreSQL 15 -> supervisor-managed, persistent data dir at /app/data/postgres
 - `.gitignore`, `backend/.env.example`, `frontend/.env.example`, README.
 - Verified end-to-end: health = connected, landing page shows Online/Connected.
 
+## Multi-branch schema (implemented 2026-06, reviewed decisions)
+- **Roles (fixed):** `super_admin`, `branch_admin`, `staff`. Stored as String +
+  CHECK constraint (not native ENUM) for reversible/extensible migrations
+  (`app/models/enums.py`).
+- **`branches`:** name, code(unique), is_active, address, phone,
+  timezone(default `Asia/Jakarta`), timestamps.
+- **`users`:** auth-ready — email(unique), hashed_password, full_name,
+  is_superadmin, is_active, last_login, timestamps. No plaintext passwords.
+- **`branch_memberships`:** many-to-many user↔branch, `role` per membership
+  (CHECK in {branch_admin, staff}), unique(user_id, branch_id), FKs cascade.
+- **Access model:** super_admin = `is_superadmin` flag, no membership needed;
+  branch_admin/staff scoped to their memberships. Isolation enforced at API
+  layer later.
+- Migration `aac5277e85ae` applied; verified reversible (downgrade→upgrade) and
+  schema inspected via psql. No seed data.
+
 ## Backlog (do NOT start without explicit instruction)
-- **P0 (next, after review):** Design the full multi-branch DB schema
-  (branches, users/roles, per-branch scoping strategy).
 - **P0:** JWT email/password authentication (branch staff + admin) — via
-  integration_expert before implementation.
+  integration_expert before implementation. Playbook already retrieved; note it
+  is MongoDB-flavored — adapt patterns (bcrypt hashing, PyJWT, cookies, brute
+  force, admin seeding) to SQLAlchemy/PostgreSQL.
 - **P1:** Branch CRUD + branch-scoped access control.
 - **P1:** Core laundry domain (orders, services, customers) — schema first.
 - **P2:** Reporting/dashboards per branch.
