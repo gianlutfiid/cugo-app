@@ -33,6 +33,9 @@ const Dashboard: React.FC = () => {
           <button className="btn-ghost" onClick={() => navigate("/customers")} data-testid="nav-customers">
             Customers
           </button>
+          <button className="btn-ghost" onClick={() => navigate("/services")} data-testid="nav-services">
+            Services
+          </button>
           {user?.is_superadmin && (
             <>
               <button className="btn-ghost" onClick={() => navigate("/branches")} data-testid="nav-branches">
