@@ -351,7 +351,8 @@
 }
 
 /* ---- Users page: table ---- */
-.users-main {
+.users-main,
+.branches-main {
   max-width: 1040px;
 }
 
@@ -387,6 +388,10 @@
 
 .data-table tr:last-child td {
   border-bottom: none;
+}
+
+.data-table td strong {
+  font-weight: 700;
 }
 
 .badge-navy {
@@ -560,4 +565,23 @@
   font-weight: 600;
   color: var(--cugo-navy);
   flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .topbar-right {
+    gap: 8px;
+  }
+
+  .topbar-right .btn-ghost,
+  .topbar-right .btn-primary {
+    padding: 8px 12px;
+  }
+
+  .topbar-right .user-chip {
+    display: none;
+  }
+
+  .modal-card {
+    padding: 24px 20px;
+  }
 }
