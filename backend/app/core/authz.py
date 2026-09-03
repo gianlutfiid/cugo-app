@@ -4,9 +4,13 @@ Access rules (read):
 - super_admin       -> all branches (active + inactive).
 - branch_admin/staff -> only their assigned ACTIVE branches.
 
+Write access for branch-scoped master data:
+- super_admin       -> any branch.
+- branch_admin      -> assigned ACTIVE branches.
+- staff             -> read only.
+
 These helpers are resource-agnostic so the same scoping can be reused for any
-future branch-scoped resource (orders, customers, etc.). To hide the existence
-of branches a user cannot access, unauthorized access raises 404.
+future branch-scoped resource (orders, customers, services, etc.).
 """
 import uuid
 
@@ -39,11 +43,7 @@ async def accessible_branch_ids(user: User, db: AsyncSession) -> list[uuid.UUID]
 async def ensure_branch_accessible(
     branch_id: uuid.UUID, user: User, db: AsyncSession
 ) -> Branch:
-    """Return the branch if the user may access it, else raise 404.
-
-    Reusable guard for any branch-scoped resource: resolve the branch_id (from a
-    path/body) through this before returning branch-owned data.
-    """
+    """Return the branch if the user may access it, else raise 404."""
     branch = await db.get(Branch, branch_id)
 
     if branch is None:
@@ -52,8 +52,6 @@ async def ensure_branch_accessible(
     if user.is_superadmin:
         return branch
 
-    # For non-super users, an inaccessible branch is indistinguishable from a
-    # non-existent one (both 404) to avoid leaking existence.
     if not branch.is_active:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
 
@@ -65,5 +63,35 @@ async def ensure_branch_accessible(
     )
     if membership.first() is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
+
+    return branch
+
+
+async def ensure_branch_manager(
+    branch_id: uuid.UUID, user: User, db: AsyncSession
+) -> Branch:
+    """Return an accessible ACTIVE branch when the user may manage its master data."""
+    branch = await db.get(Branch, branch_id)
+    if branch is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
+
+    if user.is_superadmin:
+        return branch
+
+    if not branch.is_active:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
+
+    membership = await db.execute(
+        select(BranchMembership.role).where(
+            BranchMembership.user_id == user.id,
+            BranchMembership.branch_id == branch_id,
+        )
+    )
+    role = membership.scalar_one_or_none()
+    if role != "branch_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Branch manager access required",
+        )
 
     return branch
