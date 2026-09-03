@@ -91,3 +91,15 @@ class OrderListOut(BaseModel):
     paid_amount: int
     payment_status: str
     model_config = ConfigDict(from_attributes=True)
+
+
+class OrderStatusLogOut(BaseModel):
+    id: uuid.UUID
+    order_id: uuid.UUID
+    branch_id: uuid.UUID
+    from_status: str | None
+    to_status: str
+    changed_by_user_id: uuid.UUID
+    changed_by_name: str | None
+    changed_at: datetime
+    note: str | None
