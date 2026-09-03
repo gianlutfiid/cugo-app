@@ -7,6 +7,7 @@ import SuperAdminRoute from "./auth/SuperAdminRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
+import Branches from "./pages/Branches";
 
 function App() {
   return (
@@ -27,6 +28,14 @@ function App() {
             element={
               <SuperAdminRoute>
                 <Users />
+              </SuperAdminRoute>
+            }
+          />
+          <Route
+            path="/branches"
+            element={
+              <SuperAdminRoute>
+                <Branches />
               </SuperAdminRoute>
             }
           />
