@@ -209,27 +209,15 @@ export const getCustomer = async (id: string): Promise<Customer> => {
   return data;
 };
 
-// ---- Service master ----
+// ---- Services ----
+export type ServiceUnit = "kg" | "pcs" | "pasang" | "set" | string;
+
 export interface ServiceCategory {
   id: string;
   branch_id: string;
   name: string;
   code: string;
   is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ServiceCategoryCreatePayload {
-  branch_id: string;
-  name: string;
-  code: string;
-}
-
-export interface ServiceCategoryUpdatePayload {
-  name?: string;
-  code?: string;
-  is_active?: boolean;
 }
 
 export interface ServiceItem {
@@ -243,49 +231,7 @@ export interface ServiceItem {
   unit: string;
   price: number;
   is_active: boolean;
-  created_at: string;
-  updated_at: string;
 }
-
-export interface ServiceCreatePayload {
-  branch_id: string;
-  category_id: string;
-  name: string;
-  code: string;
-  unit: string;
-  price: number;
-}
-
-export interface ServiceUpdatePayload {
-  category_id?: string;
-  name?: string;
-  code?: string;
-  unit?: string;
-  price?: number;
-  is_active?: boolean;
-}
-
-export const listServiceCategories = async (branch_id?: string): Promise<ServiceCategory[]> => {
-  const { data } = await apiClient.get<ServiceCategory[]>("/services/categories", {
-    params: { branch_id },
-  });
-  return data;
-};
-
-export const createServiceCategory = async (
-  payload: ServiceCategoryCreatePayload
-): Promise<ServiceCategory> => {
-  const { data } = await apiClient.post<ServiceCategory>("/services/categories", payload);
-  return data;
-};
-
-export const updateServiceCategory = async (
-  id: string,
-  payload: ServiceCategoryUpdatePayload
-): Promise<ServiceCategory> => {
-  const { data } = await apiClient.patch<ServiceCategory>(`/services/categories/${id}`, payload);
-  return data;
-};
 
 export const listServices = async (params?: {
   branch_id?: string;
@@ -296,16 +242,94 @@ export const listServices = async (params?: {
   return data;
 };
 
-export const createService = async (payload: ServiceCreatePayload): Promise<ServiceItem> => {
-  const { data } = await apiClient.post<ServiceItem>("/services", payload);
+// ---- Orders / invoices ----
+export interface OrderItem {
+  id: string;
+  service_id: string;
+  line_number: number;
+  service_name: string;
+  service_code: string;
+  unit: string;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+  notes: string | null;
+}
+
+export interface OrderListItem {
+  id: string;
+  branch_id: string;
+  customer_id: string;
+  customer_name: string;
+  invoice_number: string;
+  received_at: string;
+  due_at: string | null;
+  status: string;
+  subtotal: number;
+  discount: number;
+  total: number;
+  paid_amount: number;
+  payment_status: string;
+}
+
+export interface Order extends OrderListItem {
+  customer_phone: string | null;
+  payment_method: string | null;
+  notes: string | null;
+  items: OrderItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrderItemCreatePayload {
+  service_id: string;
+  quantity: number;
+  notes: string | null;
+}
+
+export interface OrderCreatePayload {
+  branch_id: string;
+  customer_id: string;
+  received_at?: string | null;
+  due_at?: string | null;
+  discount: number;
+  paid_amount: number;
+  payment_method: string | null;
+  notes: string | null;
+  items: OrderItemCreatePayload[];
+}
+
+export interface OrderUpdatePayload {
+  due_at?: string | null;
+  discount?: number;
+  paid_amount?: number;
+  payment_method?: string | null;
+  notes?: string | null;
+  status?: string;
+}
+
+export const listOrders = async (params?: {
+  branch_id?: string;
+  q?: string;
+  order_status?: string;
+  payment_status?: string;
+}): Promise<OrderListItem[]> => {
+  const { data } = await apiClient.get<OrderListItem[]>("/orders", { params });
   return data;
 };
 
-export const updateService = async (
-  id: string,
-  payload: ServiceUpdatePayload
-): Promise<ServiceItem> => {
-  const { data } = await apiClient.patch<ServiceItem>(`/services/${id}`, payload);
+export const getOrder = async (id: string): Promise<Order> => {
+  const { data } = await apiClient.get<Order>(`/orders/${id}`);
+  return data;
+};
+
+export const createOrder = async (payload: OrderCreatePayload): Promise<Order> => {
+  const { data } = await apiClient.post<Order>("/orders", payload);
+  return data;
+};
+
+export const updateOrder = async (id: string, payload: OrderUpdatePayload): Promise<Order> => {
+  const { data } = await apiClient.patch<Order>(`/orders/${id}`, payload);
   return data;
 };
 
