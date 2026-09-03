@@ -1,0 +1,17 @@
+{
+  "summary": "Independent pytest verification of per-branch READ isolation on /api/branches (list + detail). All 14 tests passed covering super_admin, branch_admin, staff, unauthenticated, ID manipulation, and BranchOut schema shape.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_branches.py", "/app/test_reports/pytest/pytest_branches.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "authz.ensure_branch_accessible: for super_admin, if branch is None the function returns None (implicit) instead of raising 404. Because route return type is Branch and response_model=BranchOut, this would surface as a 500 on validation error. Consider raising 404 for super_admin missing branch too — minor edge case (missing UUID for super)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100%", "frontend": "n/a"},
+  "test_credentials": "admin@cugo.app / ChangeMe#CUGO2026 (super), manager@cugo.app / TestPass#123 (branch_admin JKT+SBY), staff@cugo.app / TestPass#123 (staff BDG+SBY)",
+  "seed_data_creation": "Re-ran /app/backend/scripts/seed_dev_data.py (idempotent). Branches JKT-01 active, BDG-01 active, SBY-01 inactive.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "test_branches.py covers list + detail authz. When write endpoints or additional branch-scoped resources are added, reuse SUPER/MANAGER/STAFF fixture pattern and ensure_branch_accessible guard. Note the edge case above about super_admin GET on non-existent branch ID (currently returns 500 via response_model validation, not tested)."
+}

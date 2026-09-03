@@ -12,6 +12,12 @@
 No branch_admin / staff accounts exist yet (admin-created only; UI for that is
 not built yet).
 
+### Development/test accounts (created by `backend/scripts/seed_dev_data.py`)
+> DEV/TEST DATA ONLY — not production data. Run manually to verify branch isolation.
+- `manager@cugo.app` / `TestPass#123` — branch_admin @ JKT-01 (active) & SBY-01 (inactive)
+- `staff@cugo.app` / `TestPass#123` — staff @ BDG-01 (active) & SBY-01 (inactive)
+- Sample branches: JKT-01 (active), BDG-01 (active), SBY-01 (inactive)
+
 ## Auth endpoints (all under /api)
 - `POST /api/auth/login`   — body `{ "email", "password" }`, sets httpOnly cookies
 - `POST /api/auth/logout`  — clears auth cookies

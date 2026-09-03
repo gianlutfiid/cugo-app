@@ -72,13 +72,28 @@ PostgreSQL 15 -> supervisor-managed, persistent data dir at /app/data/postgres
   axios `withCredentials` + 401→refresh interceptor. No tokens in localStorage.
 - Verified end-to-end by testing agent (`/app/backend/tests/test_auth.py`).
 
+## Branch isolation (implemented 2026-06, tested 100%)
+- Reusable scoping layer `app/core/authz.py`:
+  `accessible_branch_ids(user, db)` (None = super = all) and
+  `ensure_branch_accessible(branch_id, user, db)` (raises 404) — reusable guard
+  for any future branch-scoped resource.
+- Read-only endpoints `GET /api/branches` + `GET /api/branches/{id}`.
+- Rules: super_admin = all (active + inactive); branch_admin/staff = only their
+  assigned ACTIVE branches (identical read). Unauthorized/inactive/non-member →
+  404 (hides existence); unauthenticated → 401; malformed UUID → 422.
+- Dev-only seed `backend/scripts/seed_dev_data.py` (JKT-01/BDG-01 active,
+  SBY-01 inactive; manager=branch_admin, staff=staff) — NOT product data,
+  not run on startup. Verified 14/14 via `backend/tests/test_branches.py`.
+
 ## Backlog (do NOT start without explicit instruction)
 - **P1:** Admin-created users UI + endpoints (create branch_admin/staff, assign
   branch memberships & roles).
-- **P1:** Branch CRUD (name, code, address, phone, timezone) — super_admin.
-- **P1:** Per-branch data isolation enforced in the API (branch scoping deps).
+- **P1:** Branch CRUD writes (create/update/deactivate) — super_admin, reusing
+  the authz guard for write scoping.
+- **P1:** Frontend: show the user's branches on the dashboard (consume /branches).
 - **P2:** Auth hardening — brute-force lockout, password reset, password change.
-- **P1/P2:** Core laundry domain (orders, services, customers) — schema first.
+- **P1/P2:** Core laundry domain (orders, services, customers) — schema first,
+  branch-scoped via `ensure_branch_accessible`.
 - **P1:** Branch CRUD + branch-scoped access control.
 - **P1:** Core laundry domain (orders, services, customers) — schema first.
 - **P2:** Reporting/dashboards per branch.
