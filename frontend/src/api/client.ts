@@ -8,7 +8,6 @@ export const apiClient = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// On a 401 for a non-auth request, try refreshing the access token once.
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -108,10 +107,46 @@ export interface Branch {
   address: string | null;
   phone: string | null;
   timezone: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export const listBranches = async (): Promise<Branch[]> => {
   const { data } = await apiClient.get<Branch[]>("/branches");
+  return data;
+};
+
+export const getBranch = async (id: string): Promise<Branch> => {
+  const { data } = await apiClient.get<Branch>(`/branches/${id}`);
+  return data;
+};
+
+export interface BranchCreatePayload {
+  name: string;
+  code: string;
+  address: string | null;
+  phone: string | null;
+  timezone: string;
+}
+
+export interface BranchUpdatePayload {
+  name?: string;
+  address?: string | null;
+  phone?: string | null;
+  timezone?: string;
+  is_active?: boolean;
+}
+
+export const adminCreateBranch = async (payload: BranchCreatePayload): Promise<Branch> => {
+  const { data } = await apiClient.post<Branch>("/branches", payload);
+  return data;
+};
+
+export const adminUpdateBranch = async (
+  id: string,
+  payload: BranchUpdatePayload
+): Promise<Branch> => {
+  const { data } = await apiClient.patch<Branch>(`/branches/${id}`, payload);
   return data;
 };
 
