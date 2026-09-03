@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Branch, Customer, formatApiError, listBranches, listCustomers } from "../api/client";
 import CustomerModal from "../components/customers/CustomerModal";
+import "./customers.css";
 
 const Customers: React.FC = () => {
   const navigate = useNavigate();
@@ -50,7 +51,7 @@ const Customers: React.FC = () => {
       refresh();
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [branchId, includeInactive]);
+  }, [branchId, search, includeInactive]);
 
   const branchName = (id: string) => {
     const b = branchMap.get(id);
@@ -123,7 +124,7 @@ const Customers: React.FC = () => {
         )}
       </main>
 
-      {showCreate && <CustomerModal branches={branches} defaultBranchId={branchId} onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); refresh(); }} />}
+      {showCreate && <CustomerModal branches={branches.filter((b) => b.is_active)} defaultBranchId={branchId} onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); refresh(); }} />}
       {editing && <CustomerModal branches={branches} customer={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); refresh(); }} />}
     </div>
   );
