@@ -21,6 +21,20 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed CORS origins
     CORS_ORIGINS: str
 
+    # JWT / auth
+    JWT_SECRET: str
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # Cookie behaviour (secure + samesite=none works across the HTTPS preview)
+    COOKIE_SECURE: bool = True
+    COOKIE_SAMESITE: str = "none"
+
+    # First super_admin, seeded on startup
+    ADMIN_EMAIL: str
+    ADMIN_PASSWORD: str
+
     @computed_field  # type: ignore[misc]
     @property
     def database_url(self) -> str:

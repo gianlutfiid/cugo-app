@@ -61,11 +61,24 @@ PostgreSQL 15 -> supervisor-managed, persistent data dir at /app/data/postgres
 - Migration `aac5277e85ae` applied; verified reversible (downgrade→upgrade) and
   schema inspected via psql. No seed data.
 
+## Authentication (implemented 2026-06, tested 100%)
+- JWT email/password sign-in via **httpOnly cookies** (access 30m + refresh 7d),
+  Secure + SameSite=None. bcrypt hashing, PyJWT.
+- Endpoints (core only): `POST /api/auth/login`, `POST /api/auth/logout`,
+  `GET /api/auth/me`, `POST /api/auth/refresh`.
+- super_admin **seeded on startup** from `ADMIN_EMAIL`/`ADMIN_PASSWORD` (idempotent).
+- Admin-created users only — NO public registration. Inactive users rejected (403).
+- Frontend: AuthContext + ProtectedRoute + Login page + placeholder Dashboard;
+  axios `withCredentials` + 401→refresh interceptor. No tokens in localStorage.
+- Verified end-to-end by testing agent (`/app/backend/tests/test_auth.py`).
+
 ## Backlog (do NOT start without explicit instruction)
-- **P0:** JWT email/password authentication (branch staff + admin) — via
-  integration_expert before implementation. Playbook already retrieved; note it
-  is MongoDB-flavored — adapt patterns (bcrypt hashing, PyJWT, cookies, brute
-  force, admin seeding) to SQLAlchemy/PostgreSQL.
+- **P1:** Admin-created users UI + endpoints (create branch_admin/staff, assign
+  branch memberships & roles).
+- **P1:** Branch CRUD (name, code, address, phone, timezone) — super_admin.
+- **P1:** Per-branch data isolation enforced in the API (branch scoping deps).
+- **P2:** Auth hardening — brute-force lockout, password reset, password change.
+- **P1/P2:** Core laundry domain (orders, services, customers) — schema first.
 - **P1:** Branch CRUD + branch-scoped access control.
 - **P1:** Core laundry domain (orders, services, customers) — schema first.
 - **P2:** Reporting/dashboards per branch.
