@@ -1,0 +1,77 @@
+.users-main {
+  max-width: 1180px;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 280px) auto;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.search-input,
+.select-input,
+.field textarea {
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--cugo-navy);
+  background: #fff;
+  border: 1px solid var(--cugo-border);
+  border-radius: 10px;
+  padding: 11px 13px;
+  outline: none;
+}
+
+.search-input:focus,
+.select-input:focus,
+.field textarea:focus {
+  border-color: var(--cugo-teal);
+  box-shadow: 0 0 0 3px rgba(0, 179, 164, 0.12);
+}
+
+.toolbar-select {
+  width: 100%;
+}
+
+.checkbox-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cugo-navy);
+}
+
+.toolbar-check {
+  white-space: nowrap;
+  justify-content: flex-end;
+}
+
+.field textarea {
+  width: 100%;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.table-note {
+  margin-top: 5px;
+  max-width: 300px;
+  color: var(--cugo-slate);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.empty-cell {
+  text-align: center;
+  color: var(--cugo-slate) !important;
+  padding: 32px !important;
+}
+
+@media (max-width: 820px) {
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+  .toolbar-check {
+    justify-content: flex-start;
+  }
+}
