@@ -281,6 +281,18 @@ export interface Order extends OrderListItem {
   updated_at: string;
 }
 
+export interface OrderStatusLog {
+  id: string;
+  order_id: string;
+  branch_id: string;
+  from_status: string | null;
+  to_status: string;
+  changed_by_user_id: string;
+  changed_by_name: string | null;
+  changed_at: string;
+  note: string | null;
+}
+
 export interface OrderItemCreatePayload {
   service_id: string;
   quantity: number;
@@ -320,6 +332,11 @@ export const listOrders = async (params?: {
 
 export const getOrder = async (id: string): Promise<Order> => {
   const { data } = await apiClient.get<Order>(`/orders/${id}`);
+  return data;
+};
+
+export const getOrderHistory = async (id: string): Promise<OrderStatusLog[]> => {
+  const { data } = await apiClient.get<OrderStatusLog[]>(`/orders/${id}/history`);
   return data;
 };
 
