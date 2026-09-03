@@ -209,6 +209,106 @@ export const getCustomer = async (id: string): Promise<Customer> => {
   return data;
 };
 
+// ---- Service master ----
+export interface ServiceCategory {
+  id: string;
+  branch_id: string;
+  name: string;
+  code: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServiceCategoryCreatePayload {
+  branch_id: string;
+  name: string;
+  code: string;
+}
+
+export interface ServiceCategoryUpdatePayload {
+  name?: string;
+  code?: string;
+  is_active?: boolean;
+}
+
+export interface ServiceItem {
+  id: string;
+  branch_id: string;
+  category_id: string;
+  category_name: string;
+  category_code: string;
+  name: string;
+  code: string;
+  unit: string;
+  price: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServiceCreatePayload {
+  branch_id: string;
+  category_id: string;
+  name: string;
+  code: string;
+  unit: string;
+  price: number;
+}
+
+export interface ServiceUpdatePayload {
+  category_id?: string;
+  name?: string;
+  code?: string;
+  unit?: string;
+  price?: number;
+  is_active?: boolean;
+}
+
+export const listServiceCategories = async (branch_id?: string): Promise<ServiceCategory[]> => {
+  const { data } = await apiClient.get<ServiceCategory[]>("/services/categories", {
+    params: { branch_id },
+  });
+  return data;
+};
+
+export const createServiceCategory = async (
+  payload: ServiceCategoryCreatePayload
+): Promise<ServiceCategory> => {
+  const { data } = await apiClient.post<ServiceCategory>("/services/categories", payload);
+  return data;
+};
+
+export const updateServiceCategory = async (
+  id: string,
+  payload: ServiceCategoryUpdatePayload
+): Promise<ServiceCategory> => {
+  const { data } = await apiClient.patch<ServiceCategory>(`/services/categories/${id}`, payload);
+  return data;
+};
+
+export const listServices = async (params?: {
+  branch_id?: string;
+  category_id?: string;
+  include_inactive?: boolean;
+}): Promise<ServiceItem[]> => {
+  const { data } = await apiClient.get<ServiceItem[]>("/services", { params });
+  return data;
+};
+
+export const createService = async (payload: ServiceCreatePayload): Promise<ServiceItem> => {
+  const { data } = await apiClient.post<ServiceItem>("/services", payload);
+  return data;
+};
+
+export const updateService = async (
+  id: string,
+  payload: ServiceUpdatePayload
+): Promise<ServiceItem> => {
+  const { data } = await apiClient.patch<ServiceItem>(`/services/${id}`, payload);
+  return data;
+};
+
 // ---- Admin user management ----
 export type BranchRole = "branch_admin" | "staff";
 
