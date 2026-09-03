@@ -16,10 +16,17 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    hash_password,
+    password_policy_error,
     verify_password,
 )
 from app.models.user import User
-from app.schemas.auth import LoginRequest, MessageResponse, UserOut
+from app.schemas.auth import (
+    ChangePasswordRequest,
+    LoginRequest,
+    MessageResponse,
+    UserOut,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
@@ -88,6 +95,36 @@ async def logout(response: Response) -> MessageResponse:
 @router.get("/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@router.post("/change-password", response_model=MessageResponse)
+async def change_password(
+    payload: ChangePasswordRequest,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    if not verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect"
+        )
+
+    policy_error = password_policy_error(payload.new_password)
+    if policy_error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=policy_error)
+
+    if verify_password(payload.new_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from the current password",
+        )
+
+    current_user.hashed_password = hash_password(payload.new_password)
+    await db.commit()
+
+    # Force re-authentication: clear cookies so the current session's tokens are dropped.
+    _clear_auth_cookies(response)
+    return MessageResponse(message="Password changed successfully. Please sign in again.")
 
 
 @router.post("/refresh", response_model=MessageResponse)

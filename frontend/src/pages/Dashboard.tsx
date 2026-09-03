@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { getHealth, HealthResponse } from "../api/client";
+import ChangePasswordCard from "../components/ChangePasswordCard";
 
 const roleLabel = (user: ReturnType<typeof useAuth>["user"]): string => {
   if (!user) return "";
@@ -72,6 +73,8 @@ const Dashboard: React.FC = () => {
             </li>
           </ul>
         </section>
+
+        <ChangePasswordCard />
       </main>
 
       <footer className="footer">

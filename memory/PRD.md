@@ -85,13 +85,24 @@ PostgreSQL 15 -> supervisor-managed, persistent data dir at /app/data/postgres
   SBY-01 inactive; manager=branch_admin, staff=staff) — NOT product data,
   not run on startup. Verified 14/14 via `backend/tests/test_branches.py`.
 
+## Password change (implemented 2026-06, tested 100%)
+- `POST /api/auth/change-password` (authenticated): verifies current password,
+  enforces policy (10–72 chars, must contain letters + numbers), rejects reuse
+  of the current password, updates the bcrypt hash, and **clears auth cookies**
+  to force re-authentication.
+- Frontend: "Change Password" card on the placeholder dashboard
+  (`components/ChangePasswordCard.tsx`) with current/new/confirm fields,
+  client-side validation, success/error messages; on success logs out and
+  redirects to `/login`. No passwords/hashes exposed. JWT+cookie arch unchanged.
+- Verified via `backend/tests/test_change_password.py` (7/7) + frontend flow.
+
 ## Backlog (do NOT start without explicit instruction)
 - **P1:** Admin-created users UI + endpoints (create branch_admin/staff, assign
   branch memberships & roles).
 - **P1:** Branch CRUD writes (create/update/deactivate) — super_admin, reusing
   the authz guard for write scoping.
 - **P1:** Frontend: show the user's branches on the dashboard (consume /branches).
-- **P2:** Auth hardening — brute-force lockout, password reset, password change.
+- **P2:** Auth hardening — brute-force lockout, password reset by email.
 - **P1/P2:** Core laundry domain (orders, services, customers) — schema first,
   branch-scoped via `ensure_branch_accessible`.
 - **P1:** Branch CRUD + branch-scoped access control.

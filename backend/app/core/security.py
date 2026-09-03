@@ -25,6 +25,19 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return False
 
 
+def password_policy_error(password: str) -> str | None:
+    """Return an error message if the password violates policy, else None."""
+    if len(password) < 10:
+        return "Password must be at least 10 characters long."
+    if len(password.encode("utf-8")) > 72:
+        return "Password must be at most 72 characters long."
+    if not any(c.isalpha() for c in password):
+        return "Password must contain at least one letter."
+    if not any(c.isdigit() for c in password):
+        return "Password must contain at least one number."
+    return None
+
+
 def _encode(payload: dict) -> str:
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 

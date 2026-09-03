@@ -95,6 +95,10 @@
   padding: 28px 30px;
 }
 
+.status-card + .status-card {
+  margin-top: 24px;
+}
+
 .status-card-head h2 {
   font-size: 15px;
   font-weight: 700;
@@ -270,6 +274,15 @@
   color: #c0392b;
   font-size: 14px;
   font-weight: 500;
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+
+.auth-success {
+  background: rgba(0, 179, 164, 0.1);
+  color: #008a7e;
+  font-size: 14px;
+  font-weight: 600;
   padding: 10px 14px;
   border-radius: 10px;
 }

@@ -18,7 +18,8 @@ apiClient.interceptors.response.use(
     const isAuthCall =
       url.includes("/auth/login") ||
       url.includes("/auth/refresh") ||
-      url.includes("/auth/logout");
+      url.includes("/auth/logout") ||
+      url.includes("/auth/change-password");
 
     if (status === 401 && !original._retry && !isAuthCall) {
       original._retry = true;
@@ -84,5 +85,16 @@ export const apiLogout = async (): Promise<void> => {
 
 export const apiMe = async (): Promise<User> => {
   const { data } = await apiClient.get<User>("/auth/me");
+  return data;
+};
+
+export const apiChangePassword = async (
+  current_password: string,
+  new_password: string
+): Promise<{ message: string }> => {
+  const { data } = await apiClient.post<{ message: string }>("/auth/change-password", {
+    current_password,
+    new_password,
+  });
   return data;
 };
