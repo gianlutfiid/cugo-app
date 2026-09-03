@@ -4,11 +4,11 @@ from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.authz import accessible_branch_ids, ensure_branch_accessible
+from app.core.authz import accessible_branch_ids, ensure_branch_accessible, ensure_transaction_editor
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.customer import Customer
@@ -21,6 +21,16 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 
 ALLOWED_STATUSES = {"received", "washing", "ironing", "folding", "packing", "completed", "picked_up", "cancelled"}
 ALLOWED_PAYMENT_METHODS = {"cash", "qris", "transfer", "other"}
+STATUS_TRANSITIONS = {
+    "received": {"washing", "cancelled"},
+    "washing": {"ironing", "cancelled"},
+    "ironing": {"folding", "cancelled"},
+    "folding": {"packing", "cancelled"},
+    "packing": {"completed", "cancelled"},
+    "completed": {"picked_up"},
+    "picked_up": set(),
+    "cancelled": set(),
+}
 
 
 def _money(value: Decimal) -> int:
@@ -78,7 +88,6 @@ async def _load_order(db: AsyncSession, order_id: uuid.UUID) -> Order:
 
 
 async def _next_invoice(db: AsyncSession, branch_id: uuid.UUID) -> str:
-    prefix = (await db.execute(select(func.upper(func.substr(Customer.phone, 1, 1))).limit(1))).scalar_one_or_none()
     # Timestamp + random UUID suffix avoids race-prone daily counters while remaining human-readable.
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     suffix = uuid.uuid4().hex[:4].upper()
@@ -149,7 +158,7 @@ async def get_order(order_id: uuid.UUID, current_user: User = Depends(get_curren
 
 @router.post("", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
 async def create_order(payload: OrderCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> OrderOut:
-    await ensure_branch_accessible(payload.branch_id, current_user, db)
+    await ensure_transaction_editor(payload.branch_id, current_user, db)
     customer = await db.get(Customer, payload.customer_id)
     if customer is None or customer.branch_id != payload.branch_id or not customer.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Customer is invalid, inactive, or belongs to another branch")
@@ -202,34 +211,47 @@ async def create_order(payload: OrderCreate, current_user: User = Depends(get_cu
 @router.patch("/{order_id}", response_model=OrderOut)
 async def update_order(order_id: uuid.UUID, payload: OrderUpdate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> OrderOut:
     order = await _load_order(db, order_id)
-    await ensure_branch_accessible(order.branch_id, current_user, db)
+    await ensure_transaction_editor(order.branch_id, current_user, db)
 
     data = payload.model_dump(exclude_unset=True)
+    if order.status in {"picked_up", "cancelled"} and data:
+        if any(field in data for field in {"due_at", "discount", "paid_amount", "payment_method", "notes"}):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Closed order cannot be edited")
+
     if "status" in data:
-        if data["status"] not in ALLOWED_STATUSES:
+        new_status = data["status"]
+        if new_status not in ALLOWED_STATUSES:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid order status")
-        if order.status in {"picked_up", "cancelled"} and data["status"] != order.status:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Closed order cannot be moved to another status")
+        if new_status != order.status and new_status not in STATUS_TRANSITIONS[order.status]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid status transition: {order.status} -> {new_status}",
+            )
+
+    if "due_at" in data and data["due_at"] is not None and data["due_at"] < order.received_at:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Due date cannot be before received date")
     if "payment_method" in data and data["payment_method"] is not None and data["payment_method"] not in ALLOWED_PAYMENT_METHODS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payment method")
 
     discount = data.get("discount", order.discount)
     paid_amount = data.get("paid_amount", order.paid_amount)
+    effective_payment_method = data.get("payment_method", order.payment_method)
     if discount > order.subtotal:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Discount cannot exceed subtotal")
     total = order.subtotal - discount
     if paid_amount > total:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Paid amount cannot exceed total")
-    if paid_amount > 0 and data.get("payment_method", order.payment_method) is None:
+    if paid_amount > 0 and effective_payment_method is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Payment method is required when paid amount is greater than zero")
 
     for field, value in data.items():
-        if field == "discount":
+        if field in {"discount", "paid_amount", "payment_method"}:
             continue
         setattr(order, field, value)
     order.discount = discount
     order.total = total
     order.paid_amount = paid_amount
+    order.payment_method = effective_payment_method
     order.payment_status = _payment_status(total, paid_amount)
 
     await db.commit()
