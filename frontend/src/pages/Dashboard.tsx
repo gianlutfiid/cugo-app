@@ -31,20 +31,17 @@ const Dashboard: React.FC = () => {
         </div>
         <div className="topbar-right">
           {user?.is_superadmin && (
-            <button
-              className="btn-ghost"
-              onClick={() => navigate("/users")}
-              data-testid="nav-users"
-            >
-              Users
-            </button>
+            <>
+              <button className="btn-ghost" onClick={() => navigate("/branches")} data-testid="nav-branches">
+                Branches
+              </button>
+              <button className="btn-ghost" onClick={() => navigate("/users")} data-testid="nav-users">
+                Users
+              </button>
+            </>
           )}
-          <span className="user-chip" data-testid="user-email">
-            {user?.email}
-          </span>
-          <button className="btn-ghost" onClick={logout} data-testid="logout-button">
-            Sign out
-          </button>
+          <span className="user-chip" data-testid="user-email">{user?.email}</span>
+          <button className="btn-ghost" onClick={logout} data-testid="logout-button">Sign out</button>
         </div>
       </header>
 
@@ -57,28 +54,19 @@ const Dashboard: React.FC = () => {
         </p>
 
         <section className="status-card" data-testid="account-card">
-          <div className="status-card-head">
-            <h2>Your account</h2>
-          </div>
+          <div className="status-card-head"><h2>Your account</h2></div>
           <ul className="status-list">
             <li className="status-row">
               <span className="status-label">Email</span>
-              <span className="status-value" data-testid="account-email">
-                {user?.email}
-              </span>
+              <span className="status-value" data-testid="account-email">{user?.email}</span>
             </li>
             <li className="status-row">
               <span className="status-label">Role</span>
-              <span className="badge badge-ok" data-testid="user-role">
-                {roleLabel(user)}
-              </span>
+              <span className="badge badge-ok" data-testid="user-role">{roleLabel(user)}</span>
             </li>
             <li className="status-row">
               <span className="status-label">Database (PostgreSQL)</span>
-              <span
-                className={`badge ${health?.database === "connected" ? "badge-ok" : "badge-wait"}`}
-                data-testid="status-db-badge"
-              >
+              <span className={`badge ${health?.database === "connected" ? "badge-ok" : "badge-wait"}`} data-testid="status-db-badge">
                 {health?.database === "connected" ? "Connected" : "Checking…"}
               </span>
             </li>
@@ -88,9 +76,7 @@ const Dashboard: React.FC = () => {
         <ChangePasswordCard />
       </main>
 
-      <footer className="footer">
-        <span>CUGO App · v0.1.0</span>
-      </footer>
+      <footer className="footer"><span>CUGO App · v0.1.0</span></footer>
     </div>
   );
 };
