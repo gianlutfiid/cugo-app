@@ -5,12 +5,15 @@ import {
   Customer,
   createOrder,
   formatApiError,
+  getOrder,
   listBranches,
   listCustomers,
   listOrders,
   listServices,
+  Order,
   OrderListItem,
   ServiceItem,
+  updateOrder,
 } from "../api/client";
 
 interface DraftItem {
@@ -21,6 +24,34 @@ interface DraftItem {
 
 const rupiah = (value: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
+
+const statusLabels: Record<string, string> = {
+  received: "Diterima",
+  washing: "Cuci",
+  ironing: "Setrika",
+  folding: "Lipat",
+  packing: "Packing",
+  completed: "Selesai",
+  picked_up: "Diambil",
+  cancelled: "Dibatalkan",
+};
+
+const paymentLabels: Record<string, string> = {
+  unpaid: "Belum bayar",
+  partial: "Sebagian",
+  paid: "Lunas",
+};
+
+const nextStatuses: Record<string, string[]> = {
+  received: ["washing", "cancelled"],
+  washing: ["ironing", "cancelled"],
+  ironing: ["folding", "cancelled"],
+  folding: ["packing", "cancelled"],
+  packing: ["completed", "cancelled"],
+  completed: ["picked_up"],
+  picked_up: [],
+  cancelled: [],
+};
 
 const Orders: React.FC = () => {
   const navigate = useNavigate();
@@ -35,6 +66,8 @@ const Orders: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
@@ -65,6 +98,18 @@ const Orders: React.FC = () => {
     return () => window.clearTimeout(timer);
   }, [branchId, search, status, paymentStatus]);
 
+  const openDetail = async (orderId: string) => {
+    setDetailLoading(true);
+    setError(null);
+    try {
+      setSelectedOrder(await getOrder(orderId));
+    } catch (err: any) {
+      setError(formatApiError(err.response?.data?.detail));
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   const activeBranches = branches.filter((b) => b.is_active);
 
   return (
@@ -79,7 +124,7 @@ const Orders: React.FC = () => {
       <main className="hero users-main">
         <p className="eyebrow">Operasional</p>
         <h1 className="title">Transaksi</h1>
-        <p className="subtitle">Buat nota laundry, pilih layanan, simpan catatan barang, dan catat pembayaran.</p>
+        <p className="subtitle">Buat nota laundry, cek detail barang, catat pembayaran, dan jalankan status proses secara berurutan.</p>
         <div className="toolbar">
           <input className="search-input" placeholder="Cari no. nota, nama, atau nomor HP…" value={search} onChange={(e) => setSearch(e.target.value)} />
           <select className="select-input toolbar-select" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
@@ -88,37 +133,29 @@ const Orders: React.FC = () => {
           </select>
           <select className="select-input toolbar-select" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">Semua status</option>
-            <option value="received">Diterima</option>
-            <option value="washing">Cuci</option>
-            <option value="ironing">Setrika</option>
-            <option value="folding">Lipat</option>
-            <option value="packing">Packing</option>
-            <option value="completed">Selesai</option>
-            <option value="picked_up">Diambil</option>
-            <option value="cancelled">Dibatalkan</option>
+            {Object.entries(statusLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
           <select className="select-input toolbar-select" value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
             <option value="">Semua pembayaran</option>
-            <option value="unpaid">Belum bayar</option>
-            <option value="partial">Sebagian</option>
-            <option value="paid">Lunas</option>
+            {Object.entries(paymentLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </select>
         </div>
         {error && <div className="auth-error">{error}</div>}
         {loading ? <div className="spinner" /> : (
           <div className="table-wrap">
             <table className="data-table">
-              <thead><tr><th>No. Nota</th><th>Customer</th><th>Diterima</th><th>Jatuh tempo</th><th>Status</th><th>Total</th><th>Bayar</th></tr></thead>
+              <thead><tr><th>No. Nota</th><th>Customer</th><th>Diterima</th><th>Jatuh tempo</th><th>Status</th><th>Total</th><th>Bayar</th><th>Aksi</th></tr></thead>
               <tbody>
-                {orders.length === 0 ? <tr><td colSpan={7} className="empty-cell">Belum ada transaksi.</td></tr> : orders.map((o) => (
+                {orders.length === 0 ? <tr><td colSpan={8} className="empty-cell">Belum ada transaksi.</td></tr> : orders.map((o) => (
                   <tr key={o.id}>
                     <td><strong>{o.invoice_number}</strong></td>
                     <td>{o.customer_name}</td>
                     <td>{new Date(o.received_at).toLocaleString("id-ID")}</td>
                     <td>{o.due_at ? new Date(o.due_at).toLocaleString("id-ID") : "—"}</td>
-                    <td><span className="badge badge-ok">{o.status}</span></td>
+                    <td><span className={`badge ${o.status === "cancelled" ? "badge-down" : o.status === "completed" || o.status === "picked_up" ? "badge-ok" : "badge-wait"}`}>{statusLabels[o.status] || o.status}</span></td>
                     <td>{rupiah(o.total)}</td>
-                    <td><span className={`badge ${o.payment_status === "paid" ? "badge-ok" : "badge-wait"}`}>{o.payment_status}</span></td>
+                    <td><span className={`badge ${o.payment_status === "paid" ? "badge-ok" : "badge-wait"}`}>{paymentLabels[o.payment_status] || o.payment_status}</span></td>
+                    <td><button className="btn-ghost btn-sm" onClick={() => openDetail(o.id)}>Detail</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -127,6 +164,82 @@ const Orders: React.FC = () => {
         )}
       </main>
       {showCreate && <CreateOrderModal branches={activeBranches} customers={customers.filter((c) => c.is_active)} services={services} defaultBranchId={branchId} onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); refresh(); }} />}
+      {detailLoading && <div className="modal-overlay"><div className="modal-card"><div className="spinner" /></div></div>}
+      {selectedOrder && <OrderDetailModal order={selectedOrder} branch={branches.find((b) => b.id === selectedOrder.branch_id)} onClose={() => setSelectedOrder(null)} onUpdated={(order) => { setSelectedOrder(order); refresh(); }} />}
+    </div>
+  );
+};
+
+const OrderDetailModal: React.FC<{ order: Order; branch?: Branch; onClose: () => void; onUpdated: (order: Order) => void }> = ({ order, branch, onClose, onUpdated }) => {
+  const [editDiscount, setEditDiscount] = useState(order.discount);
+  const [editPaid, setEditPaid] = useState(order.paid_amount);
+  const [editPayment, setEditPayment] = useState(order.payment_method || "cash");
+  const [editDueAt, setEditDueAt] = useState(order.due_at ? new Date(order.due_at).toISOString().slice(0, 16) : "");
+  const [editNotes, setEditNotes] = useState(order.notes || "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isClosed = ["picked_up", "cancelled"].includes(order.status);
+  const availableNext = nextStatuses[order.status] || [];
+  const total = Math.max(0, order.subtotal - editDiscount);
+  const change = Math.max(0, editPaid - total);
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await updateOrder(order.id, {
+        discount: editDiscount,
+        paid_amount: editPaid,
+        payment_method: editPaid > 0 ? editPayment : null,
+        due_at: editDueAt ? new Date(editDueAt).toISOString() : null,
+        notes: editNotes.trim() || null,
+      });
+      onUpdated(updated);
+    } catch (err: any) {
+      setError(formatApiError(err.response?.data?.detail));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const moveStatus = async (nextStatus: string) => {
+    if (nextStatus === "cancelled" && !window.confirm("Batalkan nota ini? Setelah dibatalkan, nota tidak dapat diedit lagi.")) return;
+    setSaving(true);
+    setError(null);
+    try {
+      onUpdated(await updateOrder(order.id, { status: nextStatus }));
+    } catch (err: any) {
+      setError(formatApiError(err.response?.data?.detail));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const print = () => {
+    const branchName = branch ? `${branch.code} — ${branch.name}` : "CUGO";
+    const items = order.items.map((item) => `<tr><td>${item.service_name}${item.notes ? `<br><small>${item.notes}</small>` : ""}</td><td>${item.quantity} ${item.unit}</td><td>${rupiah(item.unit_price)}</td><td>${rupiah(item.subtotal)}</td></tr>`).join("");
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${order.invoice_number}</title><style>body{font-family:Arial,sans-serif;color:#0D2340;max-width:760px;margin:32px auto;padding:0 24px}h1{font-size:24px;margin:0 0 4px}.muted{color:#667085;font-size:12px}header{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid #0D2340;padding-bottom:16px;margin-bottom:18px}.meta{text-align:right;font-size:12px}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{text-align:left;padding:9px 6px;border-bottom:1px solid #ddd;font-size:12px}th{font-size:11px;text-transform:uppercase}.totals{margin:18px 0 0 auto;max-width:320px}.totals div{display:flex;justify-content:space-between;padding:5px 0;font-size:12px}.totals .grand{font-weight:800;font-size:15px;border-top:2px solid #0D2340;padding-top:8px}.notes{margin-top:20px;padding-top:12px;border-top:1px solid #ddd;font-size:12px}.footer{margin-top:30px;text-align:center;font-size:11px;color:#667085}@media print{body{margin:0;max-width:none}}</style></head><body><header><div><h1>CUGO</h1><div class="muted">${branchName}</div></div><div class="meta"><strong>${order.invoice_number}</strong><br>Diterima: ${new Date(order.received_at).toLocaleString("id-ID")}<br>Jatuh tempo: ${order.due_at ? new Date(order.due_at).toLocaleString("id-ID") : "-"}</div></header><div><strong>${order.customer_name}</strong>${order.customer_phone ? `<div class="muted">${order.customer_phone}</div>` : ""}</div><table><thead><tr><th>Layanan</th><th>Qty</th><th>Harga</th><th>Subtotal</th></tr></thead><tbody>${items}</tbody></table><div class="totals"><div><span>Subtotal</span><strong>${rupiah(order.subtotal)}</strong></div><div><span>Diskon</span><strong>${rupiah(order.discount)}</strong></div><div class="grand"><span>Total</span><strong>${rupiah(order.total)}</strong></div><div><span>Terbayar</span><strong>${rupiah(order.paid_amount)}</strong></div><div><span>Status pembayaran</span><strong>${paymentLabels[order.payment_status]}</strong></div></div>${order.notes ? `<div class="notes"><strong>Catatan:</strong><br>${order.notes}</div>` : ""}<div class="footer">Terima kasih telah menggunakan layanan CUGO.</div></body></html>`;
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow) return;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.setTimeout(() => printWindow.print(), 250);
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-card modal-lg order-detail-card">
+        <div className="detail-head"><div><p className="eyebrow">Nota</p><h2 className="modal-title">{order.invoice_number}</h2><p className="muted-text">{order.customer_name}{order.customer_phone ? ` · ${order.customer_phone}` : ""}</p></div><button className="btn-ghost" onClick={onClose}>Tutup</button></div>
+        <div className="detail-meta-grid"><div><span className="field-label">Cabang</span><strong>{branch ? `${branch.code} — ${branch.name}` : "—"}</strong></div><div><span className="field-label">Diterima</span><strong>{new Date(order.received_at).toLocaleString("id-ID")}</strong></div><div><span className="field-label">Jatuh tempo</span><strong>{order.due_at ? new Date(order.due_at).toLocaleString("id-ID") : "—"}</strong></div><div><span className="field-label">Status</span><strong>{statusLabels[order.status] || order.status}</strong></div></div>
+        <div className="table-wrap"><table className="data-table"><thead><tr><th>Layanan</th><th>Qty</th><th>Harga</th><th>Subtotal</th><th>Catatan</th></tr></thead><tbody>{order.items.map((item) => <tr key={item.id}><td><strong>{item.service_name}</strong><div className="muted-text">{item.service_code}</div></td><td>{item.quantity} {item.unit}</td><td>{rupiah(item.unit_price)}</td><td>{rupiah(item.subtotal)}</td><td>{item.notes || "—"}</td></tr>)}</tbody></table></div>
+        <div className="detail-summary"><div><span>Subtotal</span><strong>{rupiah(order.subtotal)}</strong></div><div><span>Diskon</span><strong>{rupiah(order.discount)}</strong></div><div><span>Total</span><strong>{rupiah(order.total)}</strong></div><div><span>Terbayar</span><strong>{rupiah(order.paid_amount)}</strong></div><div><span>Pembayaran</span><strong>{paymentLabels[order.payment_status]}{order.payment_method ? ` · ${order.payment_method.toUpperCase()}` : ""}</strong></div></div>
+        {!isClosed && <><div className="detail-edit-grid"><label className="field"><span className="field-label">Diskon</span><input type="number" min="0" value={editDiscount} onChange={(e) => setEditDiscount(Math.max(0, Number(e.target.value)))} /></label><label className="field"><span className="field-label">Bayar</span><input type="number" min="0" value={editPaid} onChange={(e) => setEditPaid(Math.max(0, Number(e.target.value)))} /></label><label className="field"><span className="field-label">Metode pembayaran</span><select value={editPayment} onChange={(e) => setEditPayment(e.target.value)} disabled={editPaid === 0}><option value="cash">Cash</option><option value="qris">QRIS</option><option value="transfer">Transfer</option><option value="other">Lainnya</option></select></label><label className="field"><span className="field-label">Jatuh tempo</span><input type="datetime-local" value={editDueAt} onChange={(e) => setEditDueAt(e.target.value)} /></label><label className="field detail-note-field"><span className="field-label">Catatan nota</span><textarea className="textarea-input" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} /></label></div><div className="order-summary"><span>Total baru <strong>{rupiah(total)}</strong></span><span>Kembalian <strong>{rupiah(change)}</strong></span></div></>}
+        {error && <div className="auth-error">{error}</div>}
+        <div className="status-actions"><span className="field-label">Lanjut proses:</span>{availableNext.map((next) => <button key={next} className={next === "cancelled" ? "btn-danger" : "btn-primary"} onClick={() => moveStatus(next)} disabled={saving}>{statusLabels[next]}</button>)}</div>
+        <div className="modal-actions"><button type="button" className="btn-ghost" onClick={print}>Preview / Cetak Nota</button>{!isClosed && <button type="button" className="btn-primary" onClick={save} disabled={saving}>{saving ? "Menyimpan…" : "Simpan Perubahan"}</button>}</div>
+      </div>
     </div>
   );
 };
