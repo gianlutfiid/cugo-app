@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
 import Branches from "./pages/Branches";
 import Customers from "./pages/Customers";
+import Services from "./pages/Services";
 
 function App() {
   return (
@@ -45,6 +46,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Customers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/services"
+            element={
+              <ProtectedRoute>
+                <Services />
               </ProtectedRoute>
             }
           />
