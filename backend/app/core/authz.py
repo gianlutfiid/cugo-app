@@ -9,8 +9,8 @@ Write access for branch-scoped master data:
 - branch_admin      -> assigned ACTIVE branches.
 - staff             -> read only.
 
-These helpers are resource-agnostic so the same scoping can be reused for any
-future branch-scoped resource (orders, customers, services, etc.).
+Operational transactions use a separate helper because staff may create and
+process customer orders without receiving master-data write access.
 """
 import uuid
 
@@ -95,3 +95,15 @@ async def ensure_branch_manager(
         )
 
     return branch
+
+
+async def ensure_transaction_editor(
+    branch_id: uuid.UUID, user: User, db: AsyncSession
+) -> Branch:
+    """Allow operational transaction work for super admins and assigned users.
+
+    Staff can create/update/process transactions because the current role model
+    intentionally does not introduce a separate cashier role. Master-data write
+    permissions remain protected by ensure_branch_manager().
+    """
+    return await ensure_branch_accessible(branch_id, user, db)
