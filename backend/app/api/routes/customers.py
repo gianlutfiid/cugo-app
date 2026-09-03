@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.authz import accessible_branch_ids, ensure_branch_accessible
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.models.branch import Branch
 from app.models.customer import Customer
 from app.models.user import User
 from app.schemas.customer import CustomerCreate, CustomerOut, CustomerUpdate
@@ -81,7 +82,10 @@ async def create_customer(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Customer:
-    await ensure_branch_accessible(payload.branch_id, current_user, db)
+    branch = await ensure_branch_accessible(payload.branch_id, current_user, db)
+    if not branch.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot create a customer in an inactive branch")
+
     phone = payload.phone
     await _ensure_unique_phone(db, payload.branch_id, phone)
 
