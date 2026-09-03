@@ -150,6 +150,65 @@ export const adminUpdateBranch = async (
   return data;
 };
 
+// ---- Customers ----
+export interface Customer {
+  id: string;
+  branch_id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  notes: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerCreatePayload {
+  branch_id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  notes: string | null;
+}
+
+export interface CustomerUpdatePayload {
+  name?: string;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  is_active?: boolean;
+}
+
+export const listCustomers = async (params?: {
+  branch_id?: string;
+  q?: string;
+  include_inactive?: boolean;
+}): Promise<Customer[]> => {
+  const { data } = await apiClient.get<Customer[]>("/customers", { params });
+  return data;
+};
+
+export const createCustomer = async (payload: CustomerCreatePayload): Promise<Customer> => {
+  const { data } = await apiClient.post<Customer>("/customers", payload);
+  return data;
+};
+
+export const updateCustomer = async (
+  id: string,
+  payload: CustomerUpdatePayload
+): Promise<Customer> => {
+  const { data } = await apiClient.patch<Customer>(`/customers/${id}`, payload);
+  return data;
+};
+
+export const getCustomer = async (id: string): Promise<Customer> => {
+  const { data } = await apiClient.get<Customer>(`/customers/${id}`);
+  return data;
+};
+
 // ---- Admin user management ----
 export type BranchRole = "branch_admin" | "staff";
 
