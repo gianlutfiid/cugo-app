@@ -30,6 +30,9 @@ const Dashboard: React.FC = () => {
           <span className="brand-sub">App</span>
         </div>
         <div className="topbar-right">
+          <button className="btn-ghost" onClick={() => navigate("/customers")} data-testid="nav-customers">
+            Customers
+          </button>
           {user?.is_superadmin && (
             <>
               <button className="btn-ghost" onClick={() => navigate("/branches")} data-testid="nav-branches">
@@ -49,8 +52,7 @@ const Dashboard: React.FC = () => {
         <p className="eyebrow">Signed in</p>
         <h1 className="title">Welcome back</h1>
         <p className="subtitle">
-          You are authenticated. Branch management and laundry features will
-          appear here as we build them.
+          You are authenticated. Master data and laundry features will appear here as we build them.
         </p>
 
         <section className="status-card" data-testid="account-card">
