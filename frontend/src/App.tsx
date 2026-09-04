@@ -12,6 +12,7 @@ import Customers from "./pages/Customers";
 import Services from "./pages/Services";
 import Orders from "./pages/Orders";
 import Production from "./pages/Production";
+import Kpi from "./pages/Kpi";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
           <Route path="/production" element={<ProtectedRoute><Production /></ProtectedRoute>} />
+          <Route path="/kpi" element={<ProtectedRoute><Kpi /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
