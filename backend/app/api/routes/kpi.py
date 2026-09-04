@@ -31,9 +31,7 @@ def _add_qty(target: dict[str, float], unit: str, quantity) -> None:
 
 
 @router.get("/targets", response_model=list[KpiTargetOut])
-async def list_kpi_targets(
-    branch_id: uuid.UUID | None = None, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-) -> list[KpiTarget]:
+async def list_kpi_targets(branch_id: uuid.UUID | None = None, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)) -> list[KpiTarget]:
     accessible = await accessible_branch_ids(current_user, db)
     if branch_id is not None: await ensure_branch_accessible(branch_id, current_user, db)
     stmt = select(KpiTarget).order_by(KpiTarget.branch_id, KpiTarget.stage, KpiTarget.unit)
@@ -87,9 +85,8 @@ async def production_kpi(
     if accessible is not None: target_stmt = target_stmt.where(KpiTarget.branch_id.in_(accessible))
     if branch_id is not None: target_stmt = target_stmt.where(KpiTarget.branch_id == branch_id)
     target_result = await db.execute(target_stmt)
-    targets = target_result.scalars().all()
-    targets_by_branch = defaultdict(dict)
-    for target in targets: targets_by_branch[target.branch_id][(target.stage, target.unit)] = float(target.daily_target)
+    targets_by_branch: dict[uuid.UUID, dict[tuple[str, str], float]] = defaultdict(dict)
+    for target in target_result.scalars().all(): targets_by_branch[target.branch_id][(target.stage, target.unit)] = float(target.daily_target)
 
     start_dt, end_dt = _utc_bounds(start_date, end_date)
     stmt = select(ProductionJob).options(
@@ -119,22 +116,23 @@ async def production_kpi(
                 if job.stage not in {stage.stage for stage in item.service.production_stages}: continue
                 unit = item.unit.strip().lower(); qty = float(item.quantity)
                 _add_qty(data["qty"], unit, qty); _add_qty(data["stage_qty"][job.stage], unit, qty); summary_qty[unit] += qty
-        elif job.status == "in_progress":
-            active_count += 1; data["active"] += 1
+        elif job.status == "in_progress": active_count += 1; data["active"] += 1
 
     employees = []
     for uid, data in totals.items():
         user = next((j.assigned_user for j in jobs if j.assigned_user_id == uid), None)
-        completed = data["completed"]
         quantity_by_stage = {stage: {unit: round(qty, 2) for unit, qty in quantities.items()} for stage, quantities in data["stage_qty"].items()}
-        target_by_stage, achievement_by_stage = {}, {}
-        for branch_targets in targets_by_branch.values():
-            for (stage, unit), daily_target in branch_targets.items():
-                active_days = len(data["active_days_by_branch"].get(next((b for b, t in targets_by_branch.items() if t is branch_targets), None), set()))
-                target_total = round(daily_target * active_days, 2)
-                target_by_stage.setdefault(stage, {})[unit] = round(target_by_stage.get(stage, {}).get(unit, 0.0) + target_total, 2)
+        target_by_stage: dict[str, dict[str, float]] = {}
+        for branch_key, branch_days in data["active_days_by_branch"].items():
+            for (stage, unit), daily_target in targets_by_branch.get(branch_key, {}).items():
+                target_by_stage.setdefault(stage, {})[unit] = round(target_by_stage.get(stage, {}).get(unit, 0.0) + daily_target * len(branch_days), 2)
+        achievement_by_stage: dict[str, dict[str, float]] = {}
+        for stage, units in target_by_stage.items():
+            achievement_by_stage[stage] = {}
+            for unit, target_total in units.items():
                 actual = round(quantity_by_stage.get(stage, {}).get(unit, 0.0), 2)
-                achievement_by_stage.setdefault(stage, {})[unit] = round((actual / target_by_stage[stage][unit]) * 100, 1) if target_by_stage[stage][unit] else 0.0
+                achievement_by_stage[stage][unit] = round((actual / target_total) * 100, 1) if target_total else 0.0
+        completed = data["completed"]
         employees.append(ProductionKpiEmployee(
             user_id=uid, employee_name=(user.full_name if user and user.full_name else user.email if user else str(uid)), completed_jobs=completed,
             active_jobs=data["active"], total_duration_minutes=data["duration"], average_duration_minutes=round(data["duration"] / completed, 1) if completed else 0.0,
