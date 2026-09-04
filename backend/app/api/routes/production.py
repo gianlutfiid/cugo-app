@@ -169,6 +169,13 @@ async def complete_job(
     job.status = "completed"
     job.completed_at = now
     order.status = next_status
+    if next_status in STAGES:
+        db.add(ProductionJob(
+            order_id=order.id,
+            branch_id=order.branch_id,
+            stage=next_status,
+            status="pending",
+        ))
     db.add(OrderStatusLog(
         order_id=order.id, branch_id=order.branch_id,
         from_status=old_status, to_status=next_status,
