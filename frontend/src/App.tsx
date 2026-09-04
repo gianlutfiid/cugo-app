@@ -11,6 +11,7 @@ import Branches from "./pages/Branches";
 import Customers from "./pages/Customers";
 import Services from "./pages/Services";
 import Orders from "./pages/Orders";
+import Production from "./pages/Production";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
           <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+          <Route path="/production" element={<ProtectedRoute><Production /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
