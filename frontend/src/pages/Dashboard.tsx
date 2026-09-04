@@ -26,6 +26,7 @@ const Dashboard: React.FC = () => {
         <div className="topbar-right">
           <button className="btn-primary" onClick={() => navigate("/orders")} data-testid="nav-orders">Transaksi</button>
           <button className="btn-ghost" onClick={() => navigate("/production")} data-testid="nav-production">Produksi</button>
+          <button className="btn-ghost" onClick={() => navigate("/kpi")} data-testid="nav-kpi">KPI</button>
           <button className="btn-ghost" onClick={() => navigate("/customers")} data-testid="nav-customers">Customers</button>
           <button className="btn-ghost" onClick={() => navigate("/services")} data-testid="nav-services">Services</button>
           {user?.is_superadmin && <><button className="btn-ghost" onClick={() => navigate("/branches")} data-testid="nav-branches">Branches</button><button className="btn-ghost" onClick={() => navigate("/users")} data-testid="nav-users">Users</button></>}
