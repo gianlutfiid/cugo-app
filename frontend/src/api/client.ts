@@ -2,11 +2,7 @@ import axios from "axios";
 
 const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
-export const apiClient = axios.create({
-  baseURL: `${backendUrl}/api`,
-  withCredentials: true,
-  headers: { "Content-Type": "application/json" },
-});
+export const apiClient = axios.create({ baseURL: `${backendUrl}/api`, withCredentials: true, headers: { "Content-Type": "application/json" } });
 
 apiClient.interceptors.response.use(
   (response) => response,
@@ -57,9 +53,18 @@ export const updateCustomer = async (id: string, payload: CustomerUpdatePayload)
 export const getCustomer = async (id: string): Promise<Customer> => (await apiClient.get<Customer>(`/customers/${id}`)).data;
 
 export type ServiceUnit = "kg" | "pcs" | "pasang" | "set" | string;
+export const PRODUCTION_STAGES = ["washing", "ironing", "folding", "packing"] as const;
+export type ProductionStage = typeof PRODUCTION_STAGES[number];
 export interface ServiceCategory { id: string; branch_id: string; name: string; code: string; is_active: boolean; }
-export interface ServiceItem { id: string; branch_id: string; category_id: string; category_name: string; category_code: string; name: string; code: string; unit: string; price: number; is_active: boolean; }
+export interface ServiceCreatePayload { branch_id: string; category_id: string; name: string; code: string; unit: string; price: number; production_stages: string[]; }
+export interface ServiceUpdatePayload { category_id?: string; name?: string; code?: string; unit?: string; price?: number; production_stages?: string[]; is_active?: boolean; }
+export interface ServiceItem { id: string; branch_id: string; category_id: string; category_name: string; category_code: string; name: string; code: string; unit: string; price: number; production_stages: string[]; is_active: boolean; }
 export const listServices = async (params?: { branch_id?: string; category_id?: string; include_inactive?: boolean }): Promise<ServiceItem[]> => (await apiClient.get<ServiceItem[]>("/services", { params })).data;
+export const createService = async (payload: ServiceCreatePayload): Promise<ServiceItem> => (await apiClient.post<ServiceItem>("/services", payload)).data;
+export const updateService = async (id: string, payload: ServiceUpdatePayload): Promise<ServiceItem> => (await apiClient.patch<ServiceItem>(`/services/${id}`, payload)).data;
+export const createServiceCategory = async (payload: { branch_id: string; name: string; code: string }): Promise<ServiceCategory> => (await apiClient.post<ServiceCategory>("/services/categories", payload)).data;
+export const listServiceCategories = async (branch_id?: string): Promise<ServiceCategory[]> => (await apiClient.get<ServiceCategory[]>("/services/categories", { params: { branch_id } })).data;
+export const updateServiceCategory = async (id: string, payload: { name?: string; code?: string; is_active?: boolean }): Promise<ServiceCategory> => (await apiClient.patch<ServiceCategory>(`/services/categories/${id}`, payload)).data;
 
 export interface OrderItem { id: string; service_id: string; line_number: number; service_name: string; service_code: string; unit: string; quantity: number; unit_price: number; subtotal: number; notes: string | null; }
 export interface OrderListItem { id: string; branch_id: string; customer_id: string; customer_name: string; invoice_number: string; received_at: string; due_at: string | null; status: string; subtotal: number; discount: number; total: number; paid_amount: number; payment_status: string; }
@@ -74,7 +79,7 @@ export const getOrderHistory = async (id: string): Promise<OrderStatusLog[]> => 
 export const createOrder = async (payload: OrderCreatePayload): Promise<Order> => (await apiClient.post<Order>("/orders", payload)).data;
 export const updateOrder = async (id: string, payload: OrderUpdatePayload): Promise<Order> => (await apiClient.patch<Order>(`/orders/${id}`, payload)).data;
 
-export interface ProductionJob { id: string; order_id: string; branch_id: string; invoice_number: string; customer_name: string; stage: "washing" | "ironing" | "folding" | "packing"; status: "pending" | "in_progress" | "completed"; assigned_user_id: string | null; assigned_user_name: string | null; started_at: string | null; completed_at: string | null; notes: string | null; }
+export interface ProductionJob { id: string; order_id: string; branch_id: string; invoice_number: string; customer_name: string; stage: ProductionStage; status: "pending" | "in_progress" | "completed"; assigned_user_id: string | null; assigned_user_name: string | null; started_at: string | null; completed_at: string | null; notes: string | null; }
 export const getProductionQueue = async (stage: string, branch_id?: string): Promise<ProductionJob[]> => (await apiClient.get<ProductionJob[]>("/production/queue", { params: { stage, branch_id } })).data;
 export const claimProductionJob = async (jobId: string): Promise<ProductionJob> => (await apiClient.post<ProductionJob>(`/production/jobs/${jobId}/claim`)).data;
 export const startProductionJob = async (jobId: string): Promise<ProductionJob> => (await apiClient.post<ProductionJob>(`/production/jobs/${jobId}/start`)).data;
@@ -82,20 +87,7 @@ export const completeProductionJob = async (jobId: string): Promise<ProductionJo
 export const updateProductionJobNotes = async (jobId: string, notes: string | null): Promise<ProductionJob> => (await apiClient.patch<ProductionJob>(`/production/jobs/${jobId}/notes`, { notes })).data;
 
 export interface ProductionKpiSummary { period_start: string; period_end: string; completed_jobs: number; active_jobs: number; total_duration_minutes: number; average_duration_minutes: number; employees_count: number; quantity_by_unit: Record<string, number>; }
-export interface ProductionKpiEmployee {
-  user_id: string;
-  employee_name: string;
-  completed_jobs: number;
-  active_jobs: number;
-  total_duration_minutes: number;
-  average_duration_minutes: number;
-  active_days: number;
-  quantity_by_unit: Record<string, number>;
-  by_stage: Record<string, number>;
-  quantity_by_stage: Record<string, Record<string, number>>;
-  target_by_stage: Record<string, Record<string, number>>;
-  achievement_by_stage: Record<string, Record<string, number>>;
-}
+export interface ProductionKpiEmployee { user_id: string; employee_name: string; completed_jobs: number; active_jobs: number; total_duration_minutes: number; average_duration_minutes: number; active_days: number; quantity_by_unit: Record<string, number>; by_stage: Record<string, number>; quantity_by_stage: Record<string, Record<string, number>>; target_by_stage: Record<string, Record<string, number>>; achievement_by_stage: Record<string, Record<string, number>>; }
 export interface ProductionKpi { summary: ProductionKpiSummary; employees: ProductionKpiEmployee[]; }
 export const getProductionKpi = async (params: { start_date: string; end_date: string; branch_id?: string; user_id?: string }): Promise<ProductionKpi> => (await apiClient.get<ProductionKpi>("/kpi/production", { params })).data;
 
