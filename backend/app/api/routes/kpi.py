@@ -11,8 +11,9 @@ from sqlalchemy.orm import selectinload
 from app.core.authz import accessible_branch_ids, ensure_branch_accessible
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models.order import Order
+from app.models.order import Order, OrderItem
 from app.models.production_job import ProductionJob
+from app.models.service import Service
 from app.models.user import User
 from app.schemas.kpi import ProductionKpiEmployee, ProductionKpiOut, ProductionKpiSummary
 
@@ -47,7 +48,7 @@ async def production_kpi(
     start_dt, end_dt = _utc_bounds(start_date, end_date)
     stmt = select(ProductionJob).options(
         selectinload(ProductionJob.assigned_user),
-        selectinload(ProductionJob.order).selectinload(Order.items).selectinload("service").selectinload("production_stages"),
+        selectinload(ProductionJob.order).selectinload(Order.items).selectinload(OrderItem.service).selectinload(Service.production_stages),
     ).where(
         ProductionJob.assigned_user_id.is_not(None), ProductionJob.started_at.is_not(None),
         ProductionJob.started_at >= start_dt, ProductionJob.started_at < end_dt,
@@ -74,7 +75,8 @@ async def production_kpi(
             data["stages"][job.stage] += 1
             if job.completed_at: data["active_days"].add(job.completed_at.date())
             for item in job.order.items:
-                if job.stage not in {stage.stage for stage in item.service.production_stages}: continue
+                configured_stages = {stage.stage for stage in item.service.production_stages}
+                if job.stage not in configured_stages: continue
                 unit = item.unit.strip().lower(); qty = float(item.quantity)
                 _add_qty(data["qty"], unit, qty); _add_qty(data["stage_qty"][job.stage], unit, qty); summary_qty[unit] += qty
         elif job.status == "in_progress":
