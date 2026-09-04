@@ -1,8 +1,50 @@
 """Schemas for production KPI reporting."""
 import uuid
-from datetime import date
+from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+STAGES = ("washing", "ironing", "folding", "packing")
+
+
+class KpiTargetCreate(BaseModel):
+    branch_id: uuid.UUID
+    stage: str
+    unit: str = Field(min_length=1, max_length=20)
+    daily_target: float = Field(gt=0)
+
+    @field_validator("stage")
+    @classmethod
+    def validate_stage(cls, value: str) -> str:
+        value = value.strip().lower()
+        if value not in STAGES:
+            raise ValueError("Invalid production stage")
+        return value
+
+    @field_validator("unit")
+    @classmethod
+    def normalize_unit(cls, value: str) -> str:
+        value = value.strip().lower()
+        if not value:
+            raise ValueError("Unit cannot be blank")
+        return value
+
+
+class KpiTargetUpdate(BaseModel):
+    daily_target: float | None = Field(default=None, gt=0)
+    is_active: bool | None = None
+
+
+class KpiTargetOut(BaseModel):
+    id: uuid.UUID
+    branch_id: uuid.UUID
+    stage: str
+    unit: str
+    daily_target: float
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductionKpiSummary(BaseModel):
