@@ -81,8 +81,21 @@ export const startProductionJob = async (jobId: string): Promise<ProductionJob> 
 export const completeProductionJob = async (jobId: string): Promise<ProductionJob> => (await apiClient.post<ProductionJob>(`/production/jobs/${jobId}/complete`)).data;
 export const updateProductionJobNotes = async (jobId: string, notes: string | null): Promise<ProductionJob> => (await apiClient.patch<ProductionJob>(`/production/jobs/${jobId}/notes`, { notes })).data;
 
-export interface ProductionKpiSummary { period_start: string; period_end: string; completed_jobs: number; active_jobs: number; total_duration_minutes: number; average_duration_minutes: number; employees_count: number; }
-export interface ProductionKpiEmployee { user_id: string; employee_name: string; completed_jobs: number; active_jobs: number; total_duration_minutes: number; average_duration_minutes: number; by_stage: Record<string, number>; }
+export interface ProductionKpiSummary { period_start: string; period_end: string; completed_jobs: number; active_jobs: number; total_duration_minutes: number; average_duration_minutes: number; employees_count: number; quantity_by_unit: Record<string, number>; }
+export interface ProductionKpiEmployee {
+  user_id: string;
+  employee_name: string;
+  completed_jobs: number;
+  active_jobs: number;
+  total_duration_minutes: number;
+  average_duration_minutes: number;
+  active_days: number;
+  quantity_by_unit: Record<string, number>;
+  by_stage: Record<string, number>;
+  quantity_by_stage: Record<string, Record<string, number>>;
+  target_by_stage: Record<string, Record<string, number>>;
+  achievement_by_stage: Record<string, Record<string, number>>;
+}
 export interface ProductionKpi { summary: ProductionKpiSummary; employees: ProductionKpiEmployee[]; }
 export const getProductionKpi = async (params: { start_date: string; end_date: string; branch_id?: string; user_id?: string }): Promise<ProductionKpi> => (await apiClient.get<ProductionKpi>("/kpi/production", { params })).data;
 
