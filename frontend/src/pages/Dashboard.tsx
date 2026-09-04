@@ -27,6 +27,7 @@ const Dashboard: React.FC = () => {
           <button className="btn-primary" onClick={() => navigate("/orders")} data-testid="nav-orders">Transaksi</button>
           <button className="btn-ghost" onClick={() => navigate("/production")} data-testid="nav-production">Produksi</button>
           <button className="btn-ghost" onClick={() => navigate("/kpi")} data-testid="nav-kpi">KPI</button>
+          <button className="btn-ghost" onClick={() => navigate("/finance")} data-testid="nav-finance">Keuangan</button>
           <button className="btn-ghost" onClick={() => navigate("/customers")} data-testid="nav-customers">Customers</button>
           <button className="btn-ghost" onClick={() => navigate("/services")} data-testid="nav-services">Services</button>
           {user?.is_superadmin && <><button className="btn-ghost" onClick={() => navigate("/branches")} data-testid="nav-branches">Branches</button><button className="btn-ghost" onClick={() => navigate("/users")} data-testid="nav-users">Users</button></>}
@@ -37,7 +38,7 @@ const Dashboard: React.FC = () => {
       <main className="hero">
         <p className="eyebrow">Signed in</p>
         <h1 className="title">Welcome back</h1>
-        <p className="subtitle">You are authenticated. Master data and laundry features will appear here as we build them.</p>
+        <p className="subtitle">You are authenticated. Master data, transaksi, produksi, KPI, dan keuangan tersedia dari navigasi di atas.</p>
         <section className="status-card" data-testid="account-card">
           <div className="status-card-head"><h2>Your account</h2></div>
           <ul className="status-list">
