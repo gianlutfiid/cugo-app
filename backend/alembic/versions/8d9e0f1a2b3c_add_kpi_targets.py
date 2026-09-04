@@ -4,6 +4,8 @@ Revision ID: 8d9e0f1a2b3c
 Revises: 7c8d9e0f1a2b
 Create Date: 2026-09-04
 """
+import uuid
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
@@ -30,6 +32,24 @@ def upgrade() -> None:
         sa.UniqueConstraint("branch_id", "stage", "unit", name="uq_kpi_target_branch_stage_unit"),
     )
     op.create_index("ix_kpi_targets_branch_id", "kpi_targets", ["branch_id"])
+
+    conn = op.get_bind()
+    branch_ids = [row[0] for row in conn.execute(sa.text("SELECT id FROM branches"))]
+    target_table = sa.table(
+        "kpi_targets",
+        sa.column("id", postgresql.UUID(as_uuid=True)),
+        sa.column("branch_id", postgresql.UUID(as_uuid=True)),
+        sa.column("stage", sa.String(length=30)),
+        sa.column("unit", sa.String(length=20)),
+        sa.column("daily_target", sa.Numeric(12, 2)),
+        sa.column("is_active", sa.Boolean()),
+        sa.column("created_at", sa.DateTime(timezone=True)),
+        sa.column("updated_at", sa.DateTime(timezone=True)),
+    )
+    now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+    rows = [{"id": uuid.uuid4(), "branch_id": branch_id, "stage": "ironing", "unit": "kg", "daily_target": 50, "is_active": True, "created_at": now, "updated_at": now} for branch_id in branch_ids]
+    if rows:
+        conn.execute(target_table.insert(), rows)
 
 
 def downgrade() -> None:
