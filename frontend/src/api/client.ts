@@ -81,6 +81,11 @@ export const startProductionJob = async (jobId: string): Promise<ProductionJob> 
 export const completeProductionJob = async (jobId: string): Promise<ProductionJob> => (await apiClient.post<ProductionJob>(`/production/jobs/${jobId}/complete`)).data;
 export const updateProductionJobNotes = async (jobId: string, notes: string | null): Promise<ProductionJob> => (await apiClient.patch<ProductionJob>(`/production/jobs/${jobId}/notes`, { notes })).data;
 
+export interface ProductionKpiSummary { period_start: string; period_end: string; completed_jobs: number; active_jobs: number; total_duration_minutes: number; average_duration_minutes: number; employees_count: number; }
+export interface ProductionKpiEmployee { user_id: string; employee_name: string; completed_jobs: number; active_jobs: number; total_duration_minutes: number; average_duration_minutes: number; by_stage: Record<string, number>; }
+export interface ProductionKpi { summary: ProductionKpiSummary; employees: ProductionKpiEmployee[]; }
+export const getProductionKpi = async (params: { start_date: string; end_date: string; branch_id?: string; user_id?: string }): Promise<ProductionKpi> => (await apiClient.get<ProductionKpi>("/kpi/production", { params })).data;
+
 export type BranchRole = "branch_admin" | "staff";
 export interface AdminMembership { branch_id: string; branch_code: string; branch_name: string; role: BranchRole; }
 export interface AdminUser { id: string; email: string; full_name: string | null; is_superadmin: boolean; is_active: boolean; last_login: string | null; created_at: string; memberships: AdminMembership[]; }
