@@ -14,6 +14,7 @@ from app.core.deps import get_current_user
 from app.models.customer import Customer
 from app.models.order import Order, OrderItem
 from app.models.order_status_log import OrderStatusLog
+from app.models.production_job import ProductionJob
 from app.models.service import Service
 from app.models.user import User
 from app.schemas.order import OrderCreate, OrderItemOut, OrderListOut, OrderOut, OrderStatusLogOut, OrderUpdate
@@ -299,6 +300,11 @@ async def update_order(order_id: uuid.UUID, payload: OrderUpdate, current_user: 
     order.payment_status = _payment_status(total, paid_amount)
 
     if status_changed:
+        if old_status == "received" and order.status == "washing":
+            db.add(ProductionJob(
+                order_id=order.id, branch_id=order.branch_id,
+                stage="washing", status="pending",
+            ))
         db.add(OrderStatusLog(
             order_id=order.id,
             branch_id=order.branch_id,
