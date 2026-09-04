@@ -30,9 +30,11 @@ const Kpi: React.FC = () => {
     const h = Math.floor(minutes / 60); const m = minutes % 60;
     return m ? `${h}j ${m}mnt` : `${h}j`;
   };
+  const fmtQty = (quantity: number) => Number.isInteger(quantity) ? String(quantity) : quantity.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
   const fmtDate = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
   const stages = ["washing", "ironing", "folding", "packing"];
   const stageLabels: Record<string, string> = { washing: "Cuci", ironing: "Setrika", folding: "Lipat", packing: "Packing" };
+  const units = Object.keys(data?.summary.quantity_by_unit || {}).sort();
 
   return (
     <div className="app" data-testid="kpi-page">
@@ -58,12 +60,20 @@ const Kpi: React.FC = () => {
             <div className="kpi-stat"><span>Rata-rata / job</span><strong>{fmtDuration(Math.round(data.summary.average_duration_minutes))}</strong></div>
             <div className="kpi-stat"><span>Karyawan aktif</span><strong>{data.summary.employees_count}</strong></div>
           </section>
+          {units.length > 0 && <section className="kpi-ranking-card"><div className="kpi-section-head"><div><h2>Output Produksi</h2><p>Total kuantitas dari job yang selesai pada periode ini.</p></div></div><div className="kpi-summary-quantity">{units.map((unit) => <div className="kpi-stat" key={unit}><span>{unit}</span><strong>{fmtQty(data.summary.quantity_by_unit[unit])}</strong></div>)}</div></section>}
           <section className="kpi-ranking-card">
             <div className="kpi-section-head"><div><h2>Peringkat Produktivitas</h2><p>Urutan berdasarkan jumlah job selesai, lalu rata-rata durasi.</p></div></div>
-            <div className="table-wrap"><table className="data-table kpi-table"><thead><tr><th>#</th><th>Karyawan</th><th>Selesai</th><th>Aktif</th><th>Total Durasi</th><th>Rata-rata</th>{stages.map((s) => <th key={s}>{stageLabels[s]}</th>)}</tr></thead><tbody>
-              {data.employees.length === 0 ? <tr><td colSpan={10} className="empty-cell">Belum ada data produksi pada periode ini.</td></tr> : data.employees.map((e, i) => <tr key={e.user_id}><td><strong>{i + 1}</strong></td><td><strong>{e.employee_name}</strong></td><td>{e.completed_jobs}</td><td>{e.active_jobs}</td><td>{fmtDuration(e.total_duration_minutes)}</td><td>{fmtDuration(Math.round(e.average_duration_minutes))}</td>{stages.map((s) => <td key={s}>{e.by_stage[s] || 0}</td>)}</tr>)}
+            <div className="table-wrap"><table className="data-table kpi-table"><thead><tr><th>#</th><th>Karyawan</th><th>Hari Aktif</th><th>Selesai</th><th>Aktif</th><th>Total Durasi</th><th>Rata-rata</th>{stages.map((s) => <th key={s}>{stageLabels[s]}</th>)}</tr></thead><tbody>
+              {data.employees.length === 0 ? <tr><td colSpan={11} className="empty-cell">Belum ada data produksi pada periode ini.</td></tr> : data.employees.map((e, i) => <tr key={e.user_id}>
+                <td><strong>{i + 1}</strong></td><td><strong>{e.employee_name}</strong></td><td>{e.active_days}</td><td>{e.completed_jobs}</td><td>{e.active_jobs}</td><td>{fmtDuration(e.total_duration_minutes)}</td><td>{fmtDuration(Math.round(e.average_duration_minutes))}</td>{stages.map((s) => <td key={s}>{e.by_stage[s] || 0}</td>)}
+              </tr>)}
             </tbody></table></div>
           </section>
+          {data.employees.length > 0 && <section className="kpi-ranking-card"><div className="kpi-section-head"><div><h2>Target & Achievement</h2><p>Target Setrika saat ini menggunakan minimum 50 kg per hari aktif karyawan. Target ini nanti dapat dipindahkan ke pengaturan KPI.</p></div></div>
+            <div className="kpi-target-grid">{data.employees.map((e) => <article className="kpi-target-card" key={e.user_id}><div className="kpi-target-head"><strong>{e.employee_name}</strong><span>{e.active_days} hari aktif</span></div>
+              {Object.keys(e.target_by_stage).length === 0 ? <p className="muted-text">Belum ada target kuantitas untuk tahap ini.</p> : Object.entries(e.target_by_stage).map(([stage, targetUnits]) => <div key={stage} className="kpi-target-row"><div><strong>{stageLabels[stage]}</strong>{Object.entries(targetUnits).map(([unit, target]) => <span key={unit}>{fmtQty(e.quantity_by_stage[stage]?.[unit] || 0)} / {fmtQty(target)} {unit}</span>)}</div>{Object.entries(e.achievement_by_stage[stage] || {}).map(([unit, achievement]) => <span key={unit} className={`badge ${achievement >= 100 ? "badge-ok" : "badge-wait"}`}>{achievement}%</span>)}</div>)}
+            </article>)}</div>
+          </section>}
         </>}
       </main>
     </div>
