@@ -1,31 +1,14 @@
 import axios from "axios";
 
 const backendUrl = process.env.REACT_APP_BACKEND_URL;
-
 export const apiClient = axios.create({ baseURL: `${backendUrl}/api`, withCredentials: true, headers: { "Content-Type": "application/json" } });
-
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const original = error.config || {};
-    const status = error.response?.status;
-    const url: string = original.url || "";
-    const isAuthCall = url.includes("/auth/login") || url.includes("/auth/refresh") || url.includes("/auth/logout") || url.includes("/auth/change-password");
-    if (status === 401 && !original._retry && !isAuthCall) {
-      original._retry = true;
-      try { await apiClient.post("/auth/refresh"); return apiClient(original); } catch (refreshError) { return Promise.reject(error); }
-    }
-    return Promise.reject(error);
-  }
-);
-
-export function formatApiError(detail: unknown): string {
-  if (detail == null) return "Something went wrong. Please try again.";
-  if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((e: any) => (e && typeof e.msg === "string" ? e.msg : JSON.stringify(e))).filter(Boolean).join(" ");
-  if (typeof (detail as any).msg === "string") return (detail as any).msg;
-  return String(detail);
-}
+apiClient.interceptors.response.use((response) => response, async (error) => {
+  const original = error.config || {}; const status = error.response?.status; const url: string = original.url || "";
+  const isAuthCall = url.includes("/auth/login") || url.includes("/auth/refresh") || url.includes("/auth/logout") || url.includes("/auth/change-password");
+  if (status === 401 && !original._retry && !isAuthCall) { original._retry = true; try { await apiClient.post("/auth/refresh"); return apiClient(original); } catch (refreshError) { return Promise.reject(error); } }
+  return Promise.reject(error);
+});
+export function formatApiError(detail: unknown): string { if (detail == null) return "Something went wrong. Please try again."; if (typeof detail === "string") return detail; if (Array.isArray(detail)) return detail.map((e: any) => (e && typeof e.msg === "string" ? e.msg : JSON.stringify(e))).filter(Boolean).join(" "); if (typeof (detail as any).msg === "string") return (detail as any).msg; return String(detail); }
 
 export interface HealthResponse { status: string; service: string; database: string; environment: string; }
 export interface Membership { branch_id: string; role: string; }
@@ -86,6 +69,11 @@ export const startProductionJob = async (jobId: string): Promise<ProductionJob> 
 export const completeProductionJob = async (jobId: string): Promise<ProductionJob> => (await apiClient.post<ProductionJob>(`/production/jobs/${jobId}/complete`)).data;
 export const updateProductionJobNotes = async (jobId: string, notes: string | null): Promise<ProductionJob> => (await apiClient.patch<ProductionJob>(`/production/jobs/${jobId}/notes`, { notes })).data;
 
+export interface KpiTarget { id: string; branch_id: string; stage: string; unit: string; daily_target: number; is_active: boolean; created_at: string; updated_at: string; }
+export const listKpiTargets = async (branch_id?: string): Promise<KpiTarget[]> => (await apiClient.get<KpiTarget[]>("/kpi/targets", { params: { branch_id } })).data;
+export const createKpiTarget = async (payload: { branch_id: string; stage: string; unit: string; daily_target: number }): Promise<KpiTarget> => (await apiClient.post<KpiTarget>("/kpi/targets", payload)).data;
+export const updateKpiTarget = async (id: string, payload: { daily_target?: number; is_active?: boolean }): Promise<KpiTarget> => (await apiClient.patch<KpiTarget>(`/kpi/targets/${id}`, payload)).data;
+
 export interface ProductionKpiSummary { period_start: string; period_end: string; completed_jobs: number; active_jobs: number; total_duration_minutes: number; average_duration_minutes: number; employees_count: number; quantity_by_unit: Record<string, number>; }
 export interface ProductionKpiEmployee { user_id: string; employee_name: string; completed_jobs: number; active_jobs: number; total_duration_minutes: number; average_duration_minutes: number; active_days: number; quantity_by_unit: Record<string, number>; by_stage: Record<string, number>; quantity_by_stage: Record<string, Record<string, number>>; target_by_stage: Record<string, Record<string, number>>; achievement_by_stage: Record<string, Record<string, number>>; }
 export interface ProductionKpi { summary: ProductionKpiSummary; employees: ProductionKpiEmployee[]; }
@@ -93,7 +81,7 @@ export const getProductionKpi = async (params: { start_date: string; end_date: s
 
 export type BranchRole = "branch_admin" | "staff";
 export interface AdminMembership { branch_id: string; branch_code: string; branch_name: string; role: BranchRole; }
-export interface AdminUser { id: string; email: string; full_name: string | null; is_superadmin: boolean; is_active: boolean; last_login: string | null; created_at: string; memberships: AdminMembership[]; }
+export interface AdminUser { id: string; email: string; full_name: string | null; is_superadmin: boolean; is_active: boolean; last_login: string | null; created_at: string; updated_at?: string; memberships: AdminMembership[]; }
 export interface MembershipInput { branch_id: string; role: BranchRole; }
 export const adminListUsers = async (): Promise<AdminUser[]> => (await apiClient.get<AdminUser[]>("/users")).data;
 export const adminCreateUser = async (payload: { email: string; full_name: string | null; memberships: MembershipInput[] }): Promise<{ user: AdminUser; initial_password: string }> => (await apiClient.post("/users", payload)).data;
