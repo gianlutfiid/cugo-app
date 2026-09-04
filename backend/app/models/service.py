@@ -13,6 +13,7 @@ from app.models.base import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.models.branch import Branch
     from app.models.service_category import ServiceCategory
+    from app.models.service_production_stage import ServiceProductionStage
 
 
 class Service(Base, TimestampMixin):
@@ -22,9 +23,7 @@ class Service(Base, TimestampMixin):
         UniqueConstraint("branch_id", "name", name="uq_service_branch_name"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     branch_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("branches.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -39,3 +38,6 @@ class Service(Base, TimestampMixin):
 
     branch: Mapped["Branch"] = relationship()
     category: Mapped["ServiceCategory"] = relationship(back_populates="services")
+    production_stages: Mapped[list["ServiceProductionStage"]] = relationship(
+        back_populates="service", cascade="all, delete-orphan", lazy="selectin"
+    )
