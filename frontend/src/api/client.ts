@@ -79,6 +79,13 @@ export interface ProductionKpiEmployee { user_id: string; employee_name: string;
 export interface ProductionKpi { summary: ProductionKpiSummary; employees: ProductionKpiEmployee[]; }
 export const getProductionKpi = async (params: { start_date: string; end_date: string; branch_id?: string; user_id?: string }): Promise<ProductionKpi> => (await apiClient.get<ProductionKpi>("/kpi/production", { params })).data;
 
+export interface KpiTargetConfig { id: string; branch_id: string; stage: string; unit: string; daily_target: number; is_active: boolean; created_at: string; updated_at: string; }
+export interface FinanceSummary { period_start: string; period_end: string; revenue: number; cash_received: number; receivables: number; expenses: number; net_profit: number; order_count: number; expense_count: number; revenue_by_payment_method: Record<string, number>; expenses_by_category: Record<string, number>; }
+export interface Expense { id: string; branch_id: string; transaction_date: string; category: string; description: string; amount: number; payment_method: string; notes: string | null; created_by_user_id: string; created_by_name: string | null; created_at: string; }
+export const getFinanceSummary = async (params: { start_date: string; end_date: string; branch_id?: string }): Promise<FinanceSummary> => (await apiClient.get<FinanceSummary>("/finance/summary", { params })).data;
+export const listExpenses = async (params?: { start_date?: string; end_date?: string; branch_id?: string }): Promise<Expense[]> => (await apiClient.get<Expense[]>("/finance/expenses", { params })).data;
+export const createExpense = async (payload: { branch_id: string; transaction_date: string; category: string; description: string; amount: number; payment_method: string; notes: string | null }): Promise<Expense> => (await apiClient.post<Expense>("/finance/expenses", payload)).data;
+
 export type BranchRole = "branch_admin" | "staff";
 export interface AdminMembership { branch_id: string; branch_code: string; branch_name: string; role: BranchRole; }
 export interface AdminUser { id: string; email: string; full_name: string | null; is_superadmin: boolean; is_active: boolean; last_login: string | null; created_at: string; updated_at?: string; memberships: AdminMembership[]; }
