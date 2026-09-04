@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Branch, formatApiError, getProductionKpi, ProductionKpi } from "../api/client";
+import { Branch, formatApiError, getProductionKpi, listBranches, ProductionKpi } from "../api/client";
 
 const today = new Date();
 const toDateInput = (d: Date) => d.toISOString().slice(0, 10);
 const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
 const Kpi: React.FC = () => {
-  const navigate = useNavigate();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [branchId, setBranchId] = useState("");
   const [startDate, setStartDate] = useState(toDateInput(monthStart));
@@ -24,20 +22,14 @@ const Kpi: React.FC = () => {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { listInitialBranches(); }, []);
+  useEffect(() => { listBranches().then((b) => { setBranches(b); if (b.length === 1) setBranchId(b[0].id); }).catch((err: any) => setError(formatApiError(err.response?.data?.detail))); }, []);
   useEffect(() => { load(); }, [startDate, endDate, branchId]);
-
-  const listInitialBranches = async () => {
-    try { const { listBranches } = await import("../api/client"); const b = await listBranches(); setBranches(b); if (b.length === 1) setBranchId(b[0].id); }
-    catch (err: any) { setError(formatApiError(err.response?.data?.detail)); }
-  };
 
   const fmtDuration = (minutes: number) => {
     if (minutes < 60) return `${minutes} mnt`;
     const h = Math.floor(minutes / 60); const m = minutes % 60;
     return m ? `${h}j ${m}mnt` : `${h}j`;
   };
-
   const fmtDate = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
   const stages = ["washing", "ironing", "folding", "packing"];
   const stageLabels: Record<string, string> = { washing: "Cuci", ironing: "Setrika", folding: "Lipat", packing: "Packing" };
@@ -46,7 +38,7 @@ const Kpi: React.FC = () => {
     <div className="app" data-testid="kpi-page">
       <header className="topbar">
         <div className="brand"><span className="brand-mark">CUGO</span><span className="brand-dot" /><span className="brand-sub">KPI</span></div>
-        <div className="topbar-right"><button className="btn-ghost" onClick={() => navigate("/")}>Dashboard</button><button className="btn-ghost" onClick={() => navigate("/production")}>Produksi</button></div>
+        <div className="topbar-right"><button className="btn-ghost" onClick={() => window.history.back()}>Kembali</button></div>
       </header>
       <main className="hero users-main kpi-main">
         <p className="eyebrow">Performa Karyawan</p>
@@ -69,7 +61,7 @@ const Kpi: React.FC = () => {
           <section className="kpi-ranking-card">
             <div className="kpi-section-head"><div><h2>Peringkat Produktivitas</h2><p>Urutan berdasarkan jumlah job selesai, lalu rata-rata durasi.</p></div></div>
             <div className="table-wrap"><table className="data-table kpi-table"><thead><tr><th>#</th><th>Karyawan</th><th>Selesai</th><th>Aktif</th><th>Total Durasi</th><th>Rata-rata</th>{stages.map((s) => <th key={s}>{stageLabels[s]}</th>)}</tr></thead><tbody>
-              {data.employees.length === 0 ? <tr><td colSpan={11} className="empty-cell">Belum ada data produksi pada periode ini.</td></tr> : data.employees.map((e, i) => <tr key={e.user_id}><td><strong>{i + 1}</strong></td><td><strong>{e.employee_name}</strong></td><td>{e.completed_jobs}</td><td>{e.active_jobs}</td><td>{fmtDuration(e.total_duration_minutes)}</td><td>{fmtDuration(Math.round(e.average_duration_minutes))}</td>{stages.map((s) => <td key={s}>{e.by_stage[s] || 0}</td>)}</tr>)}
+              {data.employees.length === 0 ? <tr><td colSpan={10} className="empty-cell">Belum ada data produksi pada periode ini.</td></tr> : data.employees.map((e, i) => <tr key={e.user_id}><td><strong>{i + 1}</strong></td><td><strong>{e.employee_name}</strong></td><td>{e.completed_jobs}</td><td>{e.active_jobs}</td><td>{fmtDuration(e.total_duration_minutes)}</td><td>{fmtDuration(Math.round(e.average_duration_minutes))}</td>{stages.map((s) => <td key={s}>{e.by_stage[s] || 0}</td>)}</tr>)}
             </tbody></table></div>
           </section>
         </>}
